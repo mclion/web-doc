@@ -1,4 +1,5 @@
-import { LogIn, LogOut, ShieldCheck, User as UserIcon, UserPlus } from 'lucide-react'
+import { LogIn, LogOut, ShieldCheck, Settings, User as UserIcon, UserPlus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -12,16 +13,17 @@ import { useAuthStore } from '@/store/auth'
 
 export function UserMenu() {
   const { user, openLogin, logout, registerEnabled } = useAuthStore()
+  const navigate = useNavigate()
 
   if (!user) {
     return (
       <div className="flex items-center gap-1.5">
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openLogin('login')}>
-          <LogIn className="h-3.5 w-3.5" /> 登录
+          <LogIn className="h-3.5 w-3.5" /> Log in
         </Button>
         {registerEnabled && (
           <Button size="sm" variant="gradient" className="h-7 px-2 text-xs" onClick={() => openLogin('register')}>
-            注册
+            Sign up
           </Button>
         )}
       </div>
@@ -53,28 +55,33 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled>
           <ShieldCheck className="h-3.5 w-3.5" />
-          {user.role === 'admin' ? '管理员' : '普通用户'}
+          {user.role === 'admin' ? 'Admin' : 'User'}
         </DropdownMenuItem>
+        {user.role === 'admin' && (
+          <DropdownMenuItem onSelect={() => navigate('/admin')}>
+            <Settings className="h-3.5 w-3.5" /> Admin panel
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem destructive onSelect={() => logout()}>
-          <LogOut className="h-3.5 w-3.5" /> 退出登录
+          <LogOut className="h-3.5 w-3.5" /> Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
 
-// 仅在未登录时使用，紧凑样式
+// Used only when logged out; compact style
 export function GuestQuickActions() {
   const { openLogin, registerEnabled } = useAuthStore()
   return (
     <div className="flex items-center gap-2">
       <Button variant="outline" size="sm" onClick={() => openLogin('login')}>
-        <LogIn /> 登录
+        <LogIn /> Log in
       </Button>
       {registerEnabled && (
         <Button variant="gradient" size="sm" onClick={() => openLogin('register')}>
-          <UserPlus /> 注册
+          <UserPlus /> Sign up
         </Button>
       )}
     </div>

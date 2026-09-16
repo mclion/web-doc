@@ -452,7 +452,7 @@ export function DocViewer({
                   {sidebarOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{sidebarOpen ? '关闭侧栏' : '打开侧栏'}</TooltipContent>
+              <TooltipContent>{sidebarOpen ? 'Close sidebar' : 'Open sidebar'}</TooltipContent>
             </Tooltip>
           )}
           <span className={cn(
@@ -482,9 +482,9 @@ export function DocViewer({
         <div className="flex items-center gap-1">
           <Tabs value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
             <TabsList>
-              <TabsTrigger value="preview"><PanelsTopLeft className="h-3 w-3" />预览</TabsTrigger>
-              <TabsTrigger value="split"><SplitSquareHorizontal className="h-3 w-3" />分屏</TabsTrigger>
-              <TabsTrigger value="code"><Code2 className="h-3 w-3" />代码</TabsTrigger>
+              <TabsTrigger value="preview"><PanelsTopLeft className="h-3 w-3" />Preview</TabsTrigger>
+              <TabsTrigger value="split"><SplitSquareHorizontal className="h-3 w-3" />Split</TabsTrigger>
+              <TabsTrigger value="code"><Code2 className="h-3 w-3" />Code</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -502,7 +502,7 @@ export function DocViewer({
                 {aiOpen && <span>AI</span>}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{aiOpen ? '关闭 AI 助手' : '打开 AI 助手'}</TooltipContent>
+            <TooltipContent>{aiOpen ? 'Close AI assistant' : 'Open AI assistant'}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -511,7 +511,7 @@ export function DocViewer({
                 <RefreshCw />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>刷新预览</TooltipContent>
+            <TooltipContent>Refresh preview</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -522,7 +522,7 @@ export function DocViewer({
                 </a>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>新标签打开</TooltipContent>
+            <TooltipContent>Open in new tab</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -531,11 +531,11 @@ export function DocViewer({
                 {fullscreen ? <Minimize2 /> : <Maximize2 />}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{fullscreen ? '退出全屏' : '全屏'}</TooltipContent>
+            <TooltipContent>{fullscreen ? 'Exit fullscreen' : 'Fullscreen'}</TooltipContent>
           </Tooltip>
 
           <Button variant="gradient" size="sm" onClick={() => onShare(doc)}>
-            <Share2 /> 分享
+            <Share2 /> Share
           </Button>
         </div>
       </div>

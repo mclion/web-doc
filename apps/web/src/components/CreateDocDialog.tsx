@@ -26,7 +26,7 @@ export function CreateDocDialog({
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // 选择入口文件相关状态
+  // Entry-file picker state
   const [pickFiles, setPickFiles] = useState<string[]>([])
   const [pickDocId, setPickDocId] = useState<string | null>(null)
   const [pickValue, setPickValue] = useState<string>('')
@@ -40,9 +40,9 @@ export function CreateDocDialog({
     setBusy(true)
     try {
       if (mode === 'folder') {
-        await createNode({ parentId, type: 'folder', title: title || '新文件夹' })
+        await createNode({ parentId, type: 'folder', title: title || 'New Folder' })
       } else if (mode === 'paste') {
-        await createNode({ parentId, type: 'doc', title: title || '未命名文档', html })
+        await createNode({ parentId, type: 'doc', title: title || 'Untitled Document', html })
       } else if (mode === 'upload-html' && file) {
         const text = await file.text()
         await createNode({
@@ -59,8 +59,8 @@ export function CreateDocDialog({
         })
         const res = await Docs.uploadZip(node.id, file)
         if (res.needsEntry && res.files && res.files.length > 0) {
-          // 让用户选入口文件，先停留在 dialog 内
-          // 优先把 .html / .htm 排前面
+          // Let the user pick an entry file, stay in the dialog for now
+          // Sort .html / .htm to the front
           const sorted = [...res.files].sort((a, b) => {
             const ah = /\.html?$/i.test(a) ? 0 : 1
             const bh = /\.html?$/i.test(b) ? 0 : 1
@@ -82,16 +82,16 @@ export function CreateDocDialog({
       onOpenChange(false)
       setTimeout(reset, 200)
     } catch (e: any) {
-      alert(e?.response?.data?.error ?? e?.message ?? '操作失败')
+      alert(e?.response?.data?.error ?? e?.message ?? 'Operation failed')
     } finally {
       setBusy(false)
     }
   }
 
-  // 取消入口选择：保留文档但回到 choose 视图，并关闭弹窗
+  // Cancel entry-file pick: keep the document but return to the choose view and close the dialog
   const cancelPickEntry = async () => {
     if (pickDocId) {
-      // 让用户至少有一个能预览的入口（用列表里的第一个）
+      // Make sure the user has at least one previewable entry (use the first in the list)
       if (pickFiles.length > 0) {
         await updateNode(pickDocId, { entryFile: pickFiles[0] }).catch(() => {})
       }
@@ -106,23 +106,23 @@ export function CreateDocDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {mode === 'pick-entry' ? '选择入口文件' : '创建新内容'}
+            {mode === 'pick-entry' ? 'Choose entry file' : 'Create new content'}
           </DialogTitle>
           <DialogDescription>
             {mode === 'pick-entry'
-              ? '上传的压缩包中没有找到 index.html，请从下面选择一个文件作为预览入口。'
-              : (parentId ? '将创建在当前文件夹下' : '将创建在根目录')}
+              ? 'No index.html was found in the uploaded archive — pick a file below to use as the preview entry.'
+              : (parentId ? 'Will be created in the current folder' : 'Will be created at the root')}
           </DialogDescription>
         </DialogHeader>
 
         {mode === 'choose' && (
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <ModeCard icon={<Folder />} title="新建文件夹" desc="组织文档结构" onClick={() => setMode('folder')} />
-            <ModeCard icon={<Code2 />} title="粘贴 HTML" desc="直接粘贴源码创建" onClick={() => setMode('paste')} />
-            <ModeCard icon={<FileUp />} title="上传 .html" desc="单 HTML 文件" onClick={() => setMode('upload-html')} />
-            <ModeCard icon={<Upload />} title="上传 .zip" desc="多文件 HTML 项目" onClick={() => setMode('upload-zip')} />
+            <ModeCard icon={<Folder />} title="New folder" desc="Organize the document tree" onClick={() => setMode('folder')} />
+            <ModeCard icon={<Code2 />} title="Paste HTML" desc="Create by pasting source directly" onClick={() => setMode('paste')} />
+            <ModeCard icon={<FileUp />} title="Upload .html" desc="A single HTML file" onClick={() => setMode('upload-html')} />
+            <ModeCard icon={<Upload />} title="Upload .zip" desc="Multi-file HTML project" onClick={() => setMode('upload-zip')} />
             <ModeCard
-              icon={<Sparkles />} title="AI 生成" desc="流式生成精美 HTML"
+              icon={<Sparkles />} title="AI generate" desc="Stream-generate polished HTML"
               accent
               onClick={() => {
                 onOpenChange(false)
@@ -134,14 +134,14 @@ export function CreateDocDialog({
 
         {mode === 'folder' && (
           <div className="space-y-3">
-            <label className="text-sm">文件夹名</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="新文件夹" autoFocus />
+            <label className="text-sm">Folder name</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New Folder" autoFocus />
           </div>
         )}
 
         {mode === 'paste' && (
           <div className="space-y-3">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="文档标题" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Document title" />
             <Textarea
               value={html}
               onChange={(e) => setHtml(e.target.value)}
@@ -154,22 +154,22 @@ export function CreateDocDialog({
 
         {mode === 'upload-html' && (
           <div className="space-y-3">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="文档标题（可选，留空使用文件名）" />
-            <FilePicker accept=".html,.htm" file={file} onFile={setFile} hint="选择一个 HTML 文件" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Document title (optional, defaults to the file name)" />
+            <FilePicker accept=".html,.htm" file={file} onFile={setFile} hint="Choose an HTML file" />
           </div>
         )}
 
         {mode === 'upload-zip' && (
           <div className="space-y-3">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="文档标题（可选，留空使用文件名）" />
-            <FilePicker accept=".zip" file={file} onFile={setFile} hint="选择一个 ZIP（包含 index.html 入口）" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Document title (optional, defaults to the file name)" />
+            <FilePicker accept=".zip" file={file} onFile={setFile} hint="Choose a ZIP (must contain an index.html entry)" />
           </div>
         )}
 
         {mode === 'pick-entry' && (
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">
-              共 {pickFiles.length} 个文件，HTML 文件优先排在前面：
+              {pickFiles.length} files total, HTML files sorted first:
             </div>
             <div className="max-h-72 overflow-y-auto rounded-md border border-border/60 divide-y divide-border/40">
               {pickFiles.map((f) => {
@@ -198,15 +198,15 @@ export function CreateDocDialog({
         <DialogFooter>
           {mode === 'pick-entry' ? (
             <>
-              <Button variant="ghost" onClick={cancelPickEntry} disabled={busy}>跳过</Button>
+              <Button variant="ghost" onClick={cancelPickEntry} disabled={busy}>Skip</Button>
               <Button variant="gradient" onClick={submit} disabled={busy || !pickValue}>
-                {busy ? '保存中…' : '使用此文件作为入口'}
+                {busy ? 'Saving…' : 'Use this file as entry'}
               </Button>
             </>
           ) : (
             <>
               {mode !== 'choose' && (
-                <Button variant="ghost" onClick={() => setMode('choose')} disabled={busy}>返回</Button>
+                <Button variant="ghost" onClick={() => setMode('choose')} disabled={busy}>Back</Button>
               )}
               {mode !== 'choose' && (
                 <Button
@@ -218,7 +218,7 @@ export function CreateDocDialog({
                     (mode === 'upload-zip' && !file)
                   }
                 >
-                  {busy ? '处理中…' : '创建'}
+                  {busy ? 'Processing…' : 'Create'}
                 </Button>
               )}
             </>
@@ -287,7 +287,7 @@ function FilePicker({
       {file ? (
         <div className="text-sm">
           <div className="font-medium">{file.name}</div>
-          <div className="text-xs text-muted-foreground mt-1">{(file.size / 1024).toFixed(1)} KB · 点击重新选择</div>
+          <div className="text-xs text-muted-foreground mt-1">{(file.size / 1024).toFixed(1)} KB · click to choose a different file</div>
         </div>
       ) : (
         <div className="text-sm text-muted-foreground">

@@ -3,32 +3,32 @@ import { aiGenerate, type AIGenerateParams } from '@/lib/api'
 
 export type ChatRole = 'user' | 'assistant' | 'system'
 
-/** AI 调用的某次工具执行 */
+/** One tool execution made by an AI call */
 export interface ToolCallView {
   index: number
   id: string
   name: string
-  argsBuf: string         // 流式累积的参数字符串
+  argsBuf: string         // args string accumulated from the stream
   ok?: boolean
   summary?: string
   error?: string
-  done?: boolean          // 是否已收到结果
+  done?: boolean          // whether the result has been received
 }
 
 export interface ChatMessage {
   id: string
   role: ChatRole
-  /** 文本（用户输入 / 模型解释 / 系统提示） */
+  /** text (user input / model explanation / system prompt) */
   text: string
-  /** assistant 是否在流式中 */
+  /** whether the assistant message is currently streaming */
   streaming?: boolean
   aborted?: boolean
   error?: string
-  /** assistant 输出的工具调用（按 index 排序） */
+  /** tool calls emitted by the assistant (ordered by index) */
   toolCalls?: ToolCallView[]
-  /** assistant 是否使用了 tools 模式 */
+  /** whether the assistant used tools mode */
   useTools?: boolean
-  /** 兼容老 UI 字段：HTML 字符数（仅 create 模式 useTools=false 时使用） */
+  /** legacy UI field: HTML character count (only used in create mode with useTools=false) */
   htmlBytes?: number
   isHtml?: boolean
   ts: number
@@ -160,7 +160,7 @@ export const useAIChatStore = create<AIChatState>((set, get) => ({
           return { ...msg, toolCalls: tcs }
         })
       },
-      onRound: () => { /* 可选：未来展示轮次徽标 */ },
+      onRound: () => { /* optional: show a round badge in the future */ },
       onDone: () => {
         patchAssistant((msg) => ({ ...msg, streaming: false }))
         set({ runningDocId: null, _abort: null })

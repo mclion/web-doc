@@ -192,6 +192,15 @@ func (h *Handler) AuthOptional(c *gin.Context) {
 	c.Next()
 }
 
+// RequireAdmin 要求当前用户角色为 admin；必须放在 AuthRequired 之后。
+func (h *Handler) RequireAdmin(c *gin.Context) {
+	if getLocal(c, "role") != "admin" {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "需要管理员权限"})
+		return
+	}
+	c.Next()
+}
+
 func (h *Handler) parseBearer(c *gin.Context) string {
 	header := c.GetHeader("Authorization")
 	if header == "" {
@@ -225,16 +234,17 @@ func (h *Handler) signUserToken(u *model.User) (string, error) {
 }
 
 type publicUserView struct {
-	ID          string `json:"id"`
-	Username    string `json:"username"`
-	Email       string `json:"email,omitempty"`
-	DisplayName string `json:"displayName,omitempty"`
-	Role        string `json:"role"`
+	ID          string    `json:"id"`
+	Username    string    `json:"username"`
+	Email       string    `json:"email,omitempty"`
+	DisplayName string    `json:"displayName,omitempty"`
+	Role        string    `json:"role"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 func publicUser(u *model.User) publicUserView {
 	return publicUserView{
 		ID: u.ID, Username: u.Username, Email: u.Email,
-		DisplayName: u.DisplayName, Role: u.Role,
+		DisplayName: u.DisplayName, Role: u.Role, CreatedAt: u.CreatedAt,
 	}
 }

@@ -31,10 +31,12 @@ export default function HomePage() {
     && searchParams.get('fullscreen') !== '0'
     && searchParams.get('fullscreen') !== 'false'
 
-  useEffect(() => { loadAll() }, [loadAll])
+  // Only fetch the doc tree once we know who's logged in — it's per-user now,
+  // and an anonymous visitor has no tree of their own to fetch.
+  useEffect(() => { if (user) loadAll() }, [user, loadAll])
   useEffect(() => { bootstrap() }, [bootstrap])
 
-  // URL → store
+  // URL -> store
   useEffect(() => {
     console.debug('[web-doc route] URL -> store', {
       pathname: location.pathname,
@@ -53,7 +55,7 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeDocId])
 
-  // store → URL（保持 query 参数，例如 fullscreen）
+  // store -> URL (keep query params, e.g. fullscreen)
   useEffect(() => {
     if (routeDocId && !selectedId) {
       console.debug('[web-doc route] skip store -> URL while URL doc is being synced to store', {
@@ -85,8 +87,9 @@ export default function HomePage() {
     [nodes, selectedId],
   )
 
-  // URL 指向不存在文档：清空（仅登录用户、非 fullscreen 模式才校验，
-  // 避免分享访客/未登录用户因本地 nodes 列表不包含被分享文档而被误重定向回首页）。
+  // URL points to a doc that doesn't exist: clear it (only validated for logged-in
+  // users outside fullscreen mode, so anonymous share visitors aren't wrongly
+  // redirected home just because the shared doc isn't in their local node list).
   useEffect(() => {
     if (!routeDocId || nodes.length === 0) return
     if (!user) {
@@ -129,11 +132,15 @@ export default function HomePage() {
   }, [nodes, routeDocId, user])
 
   const handleCreate = (parentId: string | null) => {
+    if (!user) {
+      openLogin('login')
+      return
+    }
     setCreateParent(parentId)
     setCreateOpen(true)
   }
 
-  // 入口："AI 生成"：创建一个占位空文档，进入文档详情并自动打开 AI 面板
+  // Entry point for "Generate with AI": create a placeholder empty doc, open it, and auto-open the AI panel
   const handleStartAI = async (parentId: string | null) => {
     if (!user) {
       openLogin('login')
@@ -142,13 +149,13 @@ export default function HomePage() {
     const node = await createNode({
       parentId,
       type: 'doc',
-      title: 'AI 新文档',
+      title: 'AI New Document',
     })
     selectDoc(node.id)
     openPanel()
   }
 
-  // ========== Fullscreen 模式：仅显示文档纯净预览（无外壳） ==========
+  // ========== Fullscreen mode: show only the bare doc preview (no chrome) ==========
   if (fullscreen) {
     return (
       <div className="relative h-full w-full overflow-hidden bg-background">
@@ -161,7 +168,7 @@ export default function HomePage() {
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
-            加载中…
+            Loading…
           </div>
         )}
         <ShareDialog doc={shareDoc} open={!!shareDoc} onOpenChange={(v) => !v && setShareDoc(null)} />
@@ -171,7 +178,7 @@ export default function HomePage() {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-background flex">
-      {/* 侧栏：通过 sidebarOpen 控制显隐 */}
+      {/* Sidebar: visibility controlled by sidebarOpen */}
       {sidebarOpen && (
         <aside className="h-full w-72 shrink-0 bg-card border-r border-border/60 shadow-xl flex flex-col">
           <SidebarHeader
@@ -186,7 +193,7 @@ export default function HomePage() {
         </aside>
       )}
 
-      {/* 主预览区域 */}
+      {/* Main preview area */}
       <main className="relative flex-1 min-w-0 h-full">
         {selectedDoc ? (
           <DocViewer
@@ -206,7 +213,7 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* 弹窗 */}
+      {/* Dialogs */}
       <CreateDocDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
@@ -235,7 +242,7 @@ function SidebarHeader({
         </div>
         <div className="min-w-0">
           <div className="text-sm font-semibold text-gradient leading-none">Web-Doc</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">HTML 文档站</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">HTML Document Site</div>
         </div>
       </div>
       <Tooltip>
@@ -244,7 +251,7 @@ function SidebarHeader({
             <Wand2 className="text-violet-400" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>AI 设置</TooltipContent>
+        <TooltipContent>AI Settings</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -252,7 +259,7 @@ function SidebarHeader({
             <FilePlus2 />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>新建</TooltipContent>
+        <TooltipContent>New</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -260,7 +267,7 @@ function SidebarHeader({
             <X />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>关闭侧栏</TooltipContent>
+        <TooltipContent>Close sidebar</TooltipContent>
       </Tooltip>
     </div>
   )
@@ -269,7 +276,7 @@ function SidebarHeader({
 function SidebarFooter({ count }: { count: number }) {
   return (
     <div className="px-3 py-2 border-t border-border/60 text-[11px] text-muted-foreground flex items-center justify-between gap-2">
-      <span className="truncate">共 {count} 个文档</span>
+      <span className="truncate">{count} documents total</span>
       <UserMenu />
     </div>
   )
@@ -285,7 +292,7 @@ function EmptyState({
 }) {
   return (
     <div className="relative h-full w-full flex items-center justify-center gradient-bg">
-      {/* 顶部仅在侧栏关闭时显示打开按钮 */}
+      {/* Top-left open button, shown only while the sidebar is closed */}
       {!sidebarOpen && (
         <div className="absolute left-0 top-0 z-10 px-3 py-2">
           <Tooltip>
@@ -294,7 +301,7 @@ function EmptyState({
                 <PanelLeftOpen />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>打开侧栏</TooltipContent>
+            <TooltipContent>Open sidebar</TooltipContent>
           </Tooltip>
         </div>
       )}
@@ -303,18 +310,18 @@ function EmptyState({
           <Sparkles className="h-8 w-8 text-white" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight mb-3">
-          欢迎使用 <span className="text-gradient">Web-Doc</span>
+          Welcome to <span className="text-gradient">Web-Doc</span>
         </h1>
         <p className="text-muted-foreground mb-8 leading-relaxed">
-          像管理 Markdown 一样管理 AI 生成的 HTML 文档。<br />
-          沙箱预览、文件夹热更新、一键分享。
+          Manage AI-generated HTML documents like Markdown notes.<br />
+          Sandboxed preview, folder hot-reload, one-click sharing.
         </p>
         <div className="flex items-center justify-center gap-3">
           <Button variant="gradient" size="lg" onClick={onAI}>
-            <Sparkles /> AI 生成文档
+            <Sparkles /> Generate with AI
           </Button>
           <Button variant="outline" size="lg" onClick={onCreate}>
-            <FilePlus2 /> 手动创建
+            <FilePlus2 /> Create manually
           </Button>
         </div>
       </div>

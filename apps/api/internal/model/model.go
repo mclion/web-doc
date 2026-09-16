@@ -9,6 +9,7 @@ import (
 // NodeType: "folder" or "doc"
 type Node struct {
 	ID         string         `gorm:"primaryKey;size:36" json:"id"`
+	OwnerID    string         `gorm:"size:36;index" json:"ownerId,omitempty"`
 	ParentID   *string        `gorm:"index;size:36" json:"parentId,omitempty"`
 	Type       string         `gorm:"size:16;index" json:"type"` // folder | doc
 	Title      string         `gorm:"size:255" json:"title"`
@@ -54,6 +55,7 @@ type AISettings struct {
 // MCPToken 用于 MCP 接入鉴权（Bearer Token）
 type MCPToken struct {
 	ID         string     `gorm:"primaryKey;size:36" json:"id"`
+	OwnerID    string     `gorm:"size:36;index" json:"ownerId,omitempty"`
 	Name       string     `gorm:"size:128" json:"name"`
 	Token      string     `gorm:"size:64;uniqueIndex" json:"token"`
 	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
@@ -76,7 +78,10 @@ type PromptTemplate struct {
 type User struct {
 	ID           string         `gorm:"primaryKey;size:36" json:"id"`
 	Username     string         `gorm:"size:64;uniqueIndex" json:"username"`
-	Email        string         `gorm:"size:128;uniqueIndex" json:"email,omitempty"`
+	// 邮箱可选；唯一性只在应用层对非空邮箱校验（见 AuthRegister/AdminCreateUser），
+	// 所以这里不加数据库级 uniqueIndex——否则多个用户都不填邮箱时，第二个用户会因为
+	// 两个空字符串 "" 撞上唯一约束而注册失败。
+	Email        string         `gorm:"size:128;index" json:"email,omitempty"`
 	PasswordHash string         `gorm:"size:128" json:"-"`
 	DisplayName  string         `gorm:"size:128" json:"displayName,omitempty"`
 	Role         string         `gorm:"size:16;default:'user'" json:"role"` // admin | user

@@ -11,7 +11,7 @@ export default function SharePage() {
   const [doc, setDoc] = useState<DocNode | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // fullscreen 参数：跳转到主站时带上，让外壳隐藏顶部和左侧菜单（iframe 嵌套不变）
+  // fullscreen param: carried along on redirect to the main site so the shell hides the top bar and left menu (iframe nesting unchanged)
   const fullscreen = searchParams.get('fullscreen') !== null
     && searchParams.get('fullscreen') !== '0'
     && searchParams.get('fullscreen') !== 'false'
@@ -41,15 +41,16 @@ export default function SharePage() {
           status: err?.response?.status,
           message: err?.message,
         })
-        setError('链接无效或已过期')
+        setError('Link is invalid or has expired')
       })
   }, [token, fullscreen])
 
-  // 始终跳转到主站文档页（/v/:docId），保持完整 React 外壳 + iframe 的双层结构。
-  // - 默认：显示顶部 + 左侧菜单
-  // - 带 ?fullscreen：隐藏顶部 + 左侧菜单（iframe 仍然嵌套，路由不被破坏）
-  // 跳转前先把文档 upsert 到 store，避免 HomePage 因为本地 nodes 里没有它而
-  // 误判为「不存在」并重定向回首页（典型场景：未登录访客打开分享链接）。
+  // Always redirect to the main doc page (/v/:docId), keeping the full React shell + iframe two-layer structure.
+  // - Default: show top bar + left menu
+  // - With ?fullscreen: hide top bar + left menu (iframe still nested, routing unaffected)
+  // Upsert the doc into the store before redirecting, so HomePage doesn't wrongly
+  // think it's missing (because it's not in the local nodes list) and bounce back
+  // to the home page — typical case: an anonymous visitor opening a share link.
   useEffect(() => {
     if (!doc) return
     console.debug('[web-doc share] upsert shared doc before redirect', {
@@ -73,14 +74,14 @@ export default function SharePage() {
       <div className="h-full w-full flex items-center justify-center gradient-bg">
         <div className="glass border border-border/60 rounded-xl px-8 py-6 text-center">
           <h1 className="text-lg font-semibold mb-2">😕 {error}</h1>
-          <p className="text-sm text-muted-foreground">请联系分享者获取新链接。</p>
+          <p className="text-sm text-muted-foreground">Please contact the sharer for a new link.</p>
         </div>
       </div>
     )
   }
   return (
     <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
-      {doc ? '正在跳转…' : '加载中…'}
+      {doc ? 'Redirecting…' : 'Loading…'}
     </div>
   )
 }

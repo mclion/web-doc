@@ -19,6 +19,7 @@ interface DocsState {
   removeNode: (id: string) => Promise<void>
   reorderNodes: (items: ReorderItem[]) => Promise<void>
   upsertFromServer: (n: DocNode, options?: { select?: boolean; shared?: boolean }) => void
+  reset: () => void
 }
 
 export const useDocsStore = create<DocsState>((set, get) => ({
@@ -60,7 +61,7 @@ export const useDocsStore = create<DocsState>((set, get) => ({
 
   removeNode: async (id) => {
     await Nodes.remove(id)
-    // 同步移除子树
+    // remove the subtree in sync
     const idsToRemove = new Set<string>([id])
     let changed = true
     while (changed) {
@@ -79,7 +80,7 @@ export const useDocsStore = create<DocsState>((set, get) => ({
   },
 
   reorderNodes: async (items) => {
-    // 乐观更新
+    // optimistic update
     const map = new Map(items.map((i) => [i.id, i]))
     set({
       nodes: get().nodes.map((n) => {
@@ -91,7 +92,7 @@ export const useDocsStore = create<DocsState>((set, get) => ({
     try {
       await NodesReorder.batch(items)
     } catch (e) {
-      // 失败时回滚（重新拉一遍）
+      // roll back on failure (refetch)
       const fresh = await Nodes.list()
       set({ nodes: fresh })
       throw e
@@ -117,4 +118,8 @@ export const useDocsStore = create<DocsState>((set, get) => ({
     }
     set(patch)
   },
+
+  // Clears the in-memory doc tree on logout/401 so a following visitor on the same
+  // tab never sees the previous account's docs before the next loadAll() completes.
+  reset: () => set({ nodes: [], selectedId: null, sharedDocIds: [] }),
 }))

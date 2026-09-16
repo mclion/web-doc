@@ -311,9 +311,10 @@ func (h *Handler) AIGenerate(c *gin.Context) {
 	// - 若前端传了 docId 且能查到 → 复用该文档（无论 mode）。这样在“AI 新文档”里发起的 create
 	//   首轮调用，也会写到当前文档，而不是又新建一个文档导致看不到结果。
 	// - 否则按 mode 处理：rewrite/edit 必须传 docId；create 才允许新建。
+	uid := getLocal(c, "userID")
 	var target model.Node
 	if req.DocID != "" {
-		if err := h.DB.First(&target, "id = ? AND type = 'doc'", req.DocID).Error; err != nil {
+		if err := h.DB.First(&target, "id = ? AND type = 'doc'", req.DocID).Error; err != nil || target.OwnerID != uid {
 			notFound(c)
 			return
 		}
@@ -321,12 +322,20 @@ func (h *Handler) AIGenerate(c *gin.Context) {
 		badRequest(c, "docId required for rewrite/edit mode")
 		return
 	} else {
+		if req.ParentID != nil && *req.ParentID != "" {
+			var parent model.Node
+			if err := h.DB.Select("id", "owner_id").First(&parent, "id = ?", *req.ParentID).Error; err != nil || parent.OwnerID != uid {
+				notFound(c)
+				return
+			}
+		}
 		title := req.Title
 		if title == "" {
 			title = "AI · " + truncateRune(req.Prompt, 16)
 		}
 		target = model.Node{
 			ID:         uuid.NewString(),
+			OwnerID:    uid,
 			ParentID:   req.ParentID,
 			Type:       "doc",
 			Title:      title,
@@ -701,12 +710,27 @@ func (h *Handler) ReorderNodes(c *gin.Context) {
 		badRequest(c, err.Error())
 		return
 	}
+	uid := getLocal(c, "userID")
 	tx := h.DB.Begin()
 	for _, it := range req.Items {
+		var owned model.Node
+		if err := tx.Select("id", "owner_id").First(&owned, "id = ?", it.ID).Error; err != nil || owned.OwnerID != uid {
+			tx.Rollback()
+			notFound(c)
+			return
+		}
 		var parentID *string
 		if it.ParentID != nil && *it.ParentID != "" {
 			pid := *it.ParentID
 			parentID = &pid
+		}
+		if parentID != nil {
+			var parent model.Node
+			if err := tx.Select("id", "owner_id").First(&parent, "id = ?", *parentID).Error; err != nil || parent.OwnerID != uid {
+				tx.Rollback()
+				notFound(c)
+				return
+			}
 		}
 		if parentID != nil && (*parentID == it.ID || h.isDescendant(it.ID, *parentID)) {
 			tx.Rollback()
@@ -754,9 +778,8 @@ type saveFileReq struct {
 
 func (h *Handler) SaveFile(c *gin.Context) {
 	id := c.Param("id")
-	var n model.Node
-	if err := h.DB.First(&n, "id = ? AND type = 'doc'", id).Error; err != nil {
-		notFound(c)
+	n, ok := h.loadOwnedNode(c, id, true)
+	if !ok {
 		return
 	}
 	var req saveFileReq

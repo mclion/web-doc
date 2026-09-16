@@ -77,8 +77,9 @@ export function DocTree({
   const flat = useMemo(() => flatten(tree, expanded), [tree, expanded])
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
-  // 自定义碰撞检测：优先「拖到文件夹」（folder-drop:*），避免被 sortable 同级插入抢占。
-  // 只有当指针不在任何文件夹上时，才使用默认 rectIntersection 进行同级排序。
+  // Custom collision detection: prioritize "drop onto folder" (folder-drop:*) so it isn't
+  // preempted by sortable's sibling-insert. Only fall back to rectIntersection for sibling
+  // reordering when the pointer isn't over any folder.
   const collisionDetection: CollisionDetection = (args) => {
     const pointerHits = pointerWithin(args)
     const folderHit = pointerHits.find((c) => String(c.id).startsWith('folder-drop:'))
@@ -106,46 +107,46 @@ export function DocTree({
     let targetSortOrder = 0
 
     if (String(over.id).startsWith('folder-drop:')) {
-      // 拖到文件夹上 → 成为该文件夹的子节点
+      // Dropped onto a folder → becomes a child of that folder
       targetParentId = String(over.id).slice('folder-drop:'.length)
-      // 防御：拖到自己或后代下
+      // Guard: dropped onto itself or a descendant
       if (targetParentId === draggedId || isDescendant(nodes, draggedId, targetParentId)) return
-      // 父子未变（已经在该文件夹下）且序号末尾 → 不必重排
+      // Same parent (already in this folder), append to the end → no reorder needed
       const siblings = nodes.filter((n) => n.parentId === targetParentId && n.id !== draggedId)
       targetSortOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.sortOrder)) + 1 : 0
-      // 自动展开文件夹
+      // Auto-expand the folder
       const next = new Set(expanded); next.add(targetParentId); setExpanded(next)
     } else if (String(over.id) === 'root-drop') {
-      // 拖到根
+      // Dropped onto the root
       targetParentId = null
       const siblings = nodes.filter((n) => !n.parentId && n.id !== draggedId)
       targetSortOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.sortOrder)) + 1 : 0
     } else {
-      // 排到某个节点的位置（同级）
+      // Sorted to a node's position (sibling)
       const overNode = nodes.find((n) => n.id === over.id)
       if (!overNode) return
       targetParentId = overNode.parentId ?? null
       if (targetParentId === draggedId || (targetParentId && isDescendant(nodes, draggedId, targetParentId))) return
-      // 在 over 节点之前插入（取它的 sortOrder，并把它及之后整体后移）
+      // Insert before the over node (take its sortOrder and shift it plus everything after)
       targetSortOrder = overNode.sortOrder
     }
 
-    // 计算需要写回的批次：本节点 + 受影响兄弟节点重排
+    // Compute the batch to write back: this node + affected siblings reordered
     const items = computeReorderBatch(nodes, draggedId, targetParentId, targetSortOrder)
     if (items.length === 0) return
     try {
       await reorderNodes(items)
     } catch (e) {
-      alert('移动失败')
+      alert('Move failed')
     }
   }
 
   if (tree.length === 0) {
     return (
       <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-        <p className="mb-2">还没有文档</p>
+        <p className="mb-2">No documents yet</p>
         <button onClick={() => onCreateInFolder?.(null)} className="text-primary hover:underline">
-          创建第一个 →
+          Create the first one →
         </button>
       </div>
     )
@@ -173,12 +174,12 @@ export function DocTree({
               onSelect={() => node.type === 'doc' ? selectDoc(node.id) : toggle(node.id)}
               onRename={(t) => updateNode(node.id, { title: t })}
               onDelete={() => {
-                if (confirm(`确定删除 "${node.title}"？${node.type === 'folder' ? '子内容也会一并删除。' : ''}`))
+                if (confirm(`Delete "${node.title}"?${node.type === 'folder' ? ' Its contents will be deleted too.' : ''}`))
                   removeNode(node.id)
               }}
               onCreateChildDoc={() => onCreateInFolder?.(node.id)}
               onCreateChildFolder={async () => {
-                await createNode({ parentId: node.id, type: 'folder', title: '新文件夹' })
+                await createNode({ parentId: node.id, type: 'folder', title: 'New Folder' })
                 const next = new Set(expanded); next.add(node.id); setExpanded(next)
               }}
             />
@@ -209,7 +210,7 @@ function RootDropZone() {
           : 'border-transparent text-transparent hover:border-border/60 hover:text-muted-foreground',
       )}
     >
-      拖到此处放至根目录
+      Drop here to move to root
     </div>
   )
 }
@@ -254,7 +255,7 @@ function TreeRow({
     opacity: sortable.isDragging ? 0.4 : 1,
   }
 
-  // 把 sortable + droppable 的 ref 合并
+  // Merge the sortable + droppable refs
   const setRefs = (el: HTMLDivElement | null) => {
     sortable.setNodeRef(el)
     if (isFolder) droppable.setNodeRef(el)
@@ -274,13 +275,13 @@ function TreeRow({
       onClick={onSelect}
       onDoubleClick={(e) => { e.stopPropagation(); setEditing(true) }}
     >
-      {/* 拖拽手柄 */}
+      {/* Drag handle */}
       <button
         {...sortable.attributes}
         {...sortable.listeners}
         onClick={(e) => e.stopPropagation()}
         className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-60 hover:opacity-100 -ml-1"
-        title="拖拽移动"
+        title="Drag to move"
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
@@ -333,19 +334,19 @@ function TreeRow({
           {isFolder && (
             <>
               <DropdownMenuItem onSelect={onCreateChildDoc}>
-                <Plus className="h-4 w-4" /> 新建文档
+                <Plus className="h-4 w-4" /> New document
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={onCreateChildFolder}>
-                <FolderClosed className="h-4 w-4" /> 新建子文件夹
+                <FolderClosed className="h-4 w-4" /> New subfolder
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
           )}
           <DropdownMenuItem onSelect={() => setEditing(true)}>
-            <Pencil className="h-4 w-4" /> 重命名
+            <Pencil className="h-4 w-4" /> Rename
           </DropdownMenuItem>
           <DropdownMenuItem destructive onSelect={onDelete}>
-            <Trash2 className="h-4 w-4" /> 删除
+            <Trash2 className="h-4 w-4" /> Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -353,7 +354,7 @@ function TreeRow({
   )
 }
 
-// ---------- 工具函数 ----------
+// ---------- Helpers ----------
 
 function isDescendant(nodes: DocNode[], ancestor: string, candidate: string): boolean {
   let current: string | null | undefined = candidate
@@ -373,17 +374,17 @@ function computeReorderBatch(
   newParentId: string | null,
   newSortOrder: number,
 ): { id: string; parentId: string | null; sortOrder: number }[] {
-  // 同级兄弟（不含被拖拽节点）
+  // Sibling nodes (excluding the dragged node)
   const siblings = nodes
     .filter((n) => (n.parentId ?? null) === newParentId && n.id !== draggedId)
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
 
-  // 在 newSortOrder 位置之前 / 之后分两组
+  // Split into before / after the newSortOrder position
   const before = siblings.filter((s) => s.sortOrder < newSortOrder)
   const after = siblings.filter((s) => s.sortOrder >= newSortOrder)
 
-  // 重新生成连续的 sortOrder
+  // Regenerate contiguous sortOrder values
   const out: { id: string; parentId: string | null; sortOrder: number }[] = []
   let order = 0
   for (const s of before) out.push({ id: s.id, parentId: newParentId, sortOrder: order++ })

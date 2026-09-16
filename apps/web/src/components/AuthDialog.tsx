@@ -40,15 +40,15 @@ export function AuthDialog() {
     try {
       if (tab === 'login') {
         if (!username.trim() || !password) {
-          setError('请填写账号和密码'); return
+          setError('Please enter your username and password'); return
         }
         await login(username.trim(), password)
       } else {
         if (!username.trim() || !password) {
-          setError('请填写用户名和密码'); return
+          setError('Please enter a username and password'); return
         }
         if (password !== confirmPwd) {
-          setError('两次输入的密码不一致'); return
+          setError('Passwords do not match'); return
         }
         await register({
           username: username.trim(),
@@ -58,7 +58,7 @@ export function AuthDialog() {
         })
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || '操作失败')
+      setError(err?.response?.data?.error || err?.message || 'Something went wrong')
     }
   }
 
@@ -72,10 +72,10 @@ export function AuthDialog() {
             </div>
             <div>
               <DialogTitle className="text-xl">
-                欢迎来到 <span className="text-gradient">Web-Doc</span>
+                Welcome to <span className="text-gradient">Web-Doc</span>
               </DialogTitle>
               <DialogDescription className="mt-0.5">
-                登录后即可使用 AI 生成与编辑功能
+                Log in to use AI generation and editing
               </DialogDescription>
             </div>
           </div>
@@ -83,15 +83,15 @@ export function AuthDialog() {
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setError(null) }}>
           <TabsList className="grid grid-cols-2 mb-4">
-            <TabsTrigger value="login">登录</TabsTrigger>
+            <TabsTrigger value="login">Log in</TabsTrigger>
             <TabsTrigger value="register" disabled={!registerEnabled}>
-              注册{!registerEnabled && '（已关闭）'}
+              Register{!registerEnabled && ' (closed)'}
             </TabsTrigger>
           </TabsList>
 
           <form onSubmit={onSubmit} className="space-y-3">
             <TabsContent value="login" className="space-y-3 mt-0">
-              <Field label="用户名 / 邮箱">
+              <Field label="Username / email">
                 <Input
                   autoFocus
                   placeholder="username"
@@ -99,7 +99,7 @@ export function AuthDialog() {
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </Field>
-              <Field label="密码">
+              <Field label="Password">
                 <Input
                   type="password"
                   placeholder="••••••"
@@ -110,7 +110,7 @@ export function AuthDialog() {
             </TabsContent>
 
             <TabsContent value="register" className="space-y-3 mt-0">
-              <Field label="用户名" hint="3-32 位字母 / 数字 / 下划线">
+              <Field label="Username" hint="3-32 letters / digits / underscores">
                 <Input
                   autoFocus
                   placeholder="username"
@@ -118,7 +118,7 @@ export function AuthDialog() {
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </Field>
-              <Field label="密码" hint="至少 6 位">
+              <Field label="Password" hint="at least 6 characters">
                 <Input
                   type="password"
                   placeholder="••••••"
@@ -126,7 +126,7 @@ export function AuthDialog() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </Field>
-              <Field label="确认密码">
+              <Field label="Confirm password">
                 <Input
                   type="password"
                   placeholder="••••••"
@@ -134,7 +134,7 @@ export function AuthDialog() {
                   onChange={(e) => setConfirmPwd(e.target.value)}
                 />
               </Field>
-              <Field label="邮箱（可选）">
+              <Field label="Email (optional)">
                 <Input
                   type="email"
                   placeholder="you@example.com"
@@ -142,7 +142,7 @@ export function AuthDialog() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </Field>
-              <Field label="昵称（可选）">
+              <Field label="Display name (optional)">
                 <Input
                   placeholder="My Name"
                   value={displayName}
@@ -162,16 +162,16 @@ export function AuthDialog() {
 
             <Button type="submit" variant="gradient" className="w-full" disabled={loading}>
               {loading && <Loader2 className="animate-spin" />}
-              {tab === 'login' ? '登录' : '创建账号'}
+              {tab === 'login' ? 'Log in' : 'Create account'}
             </Button>
 
             <p className="text-center text-xs text-muted-foreground">
               {tab === 'login' ? (
                 registerEnabled ? (
-                  <>还没有账号？<button type="button" className="text-primary hover:underline" onClick={() => setTab('register')}>立即注册</button></>
-                ) : '注册已关闭，请联系管理员'
+                  <>No account yet? <button type="button" className="text-primary hover:underline" onClick={() => setTab('register')}>Register now</button></>
+                ) : 'Registration is closed, please contact an admin'
               ) : (
-                <>已有账号？<button type="button" className="text-primary hover:underline" onClick={() => setTab('login')}>去登录</button></>
+                <>Already have an account? <button type="button" className="text-primary hover:underline" onClick={() => setTab('login')}>Log in</button></>
               )}
             </p>
           </form>

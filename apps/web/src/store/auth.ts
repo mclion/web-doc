@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Auth, getToken, setToken, type AuthUser } from '@/lib/api'
+import { useDocsStore } from '@/store/docs'
 
 interface AuthState {
   user: AuthUser | null
@@ -68,14 +69,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     setToken(null)
     set({ user: null, token: null })
+    useDocsStore.getState().reset()
   },
 }))
 
-// 全局 401 监听
+// Global 401 listener
 if (typeof window !== 'undefined') {
   window.addEventListener('webdoc:unauthorized', () => {
     const { user, openLogin } = useAuthStore.getState()
     useAuthStore.setState({ user: null, token: null })
+    useDocsStore.getState().reset()
     if (user) openLogin('login')
   })
 }

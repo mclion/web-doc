@@ -21,16 +21,16 @@ interface Props {
 }
 
 const SUGGESTIONS_FIRST: string[] = [
-  '一份产品介绍页：英雄区 + 特性卡片 + 数据 + 时间线 + CTA',
-  '本周周报：核心指标卡 / 完成事项时间线 / 下周计划',
-  '团队介绍：成员卡片网格 + 技能雷达图 + 联系方式',
-  '会议纪要：主题 / 参会人 / 议题折叠 / 待办清单',
+  'A product landing page: hero + feature cards + stats + timeline + CTA',
+  'This week\'s report: key metric cards / completed-items timeline / next week\'s plan',
+  'Team intro: member card grid + skill radar chart + contact info',
+  'Meeting notes: topic / attendees / collapsible agenda / to-do list',
 ]
 const SUGGESTIONS_FOLLOWUP: string[] = [
-  '把整体配色改成暖色调（橙/赭/米白），更现代',
-  '标题字号调大、段落留白更舒适',
-  '加一个深色 / 浅色模式切换按钮',
-  '把数据卡片改成可点击，hover 加微动画',
+  'Switch the palette to warm tones (orange/ochre/cream), more modern',
+  'Bump up the heading size and give paragraphs more breathing room',
+  'Add a dark / light mode toggle button',
+  'Make the data cards clickable, with a subtle hover animation',
 ]
 
 export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
@@ -101,32 +101,32 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
 
   return (
     <div className="h-full w-full flex flex-col bg-background/60">
-      {/* 头部 */}
+      {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 glass">
         <div className="h-6 w-6 rounded-md bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
           <Sparkles className="h-3.5 w-3.5 text-white" />
         </div>
-        <div className="text-sm font-medium flex-1 truncate">AI 助手</div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenSettings} title="AI 设置">
+        <div className="text-sm font-medium flex-1 truncate">AI Assistant</div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenSettings} title="AI settings">
           <Settings2 />
         </Button>
         {messages.length > 0 && (
           <Button
             variant="ghost" size="icon" className="h-7 w-7"
-            onClick={() => clear(doc.id)} disabled={running} title="清空对话"
+            onClick={() => clear(doc.id)} disabled={running} title="Clear conversation"
           >
             <Trash2 />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} title="关闭">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} title="Close">
           <X />
         </Button>
       </div>
 
-      {/* Skill 选择条（Skill = 预制提示词模板） */}
+      {/* Skill selector bar (Skill = a preset prompt template) */}
       <div className="px-3 py-2 border-b border-border/60 flex items-center gap-2 text-[11px]">
         <span className="text-muted-foreground shrink-0">
-          {isCreateLike ? '创建' : '修改'} · Skill
+          {isCreateLike ? 'Create' : 'Edit'} · Skill
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -136,18 +136,18 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
               title={activePrompt?.content}
             >
               <span className="truncate">
-                {activePrompt?.name ?? (isCreateLike ? '默认创建 Skill' : '默认修改 Skill')}
+                {activePrompt?.name ?? (isCreateLike ? 'Default create skill' : 'Default edit skill')}
               </span>
               <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
             <DropdownMenuLabel className="text-[11px] text-muted-foreground">
-              选择 Skill模板（{isCreateLike ? '创建' : '修改'} 场景）
+              Choose a Skill template ({isCreateLike ? 'create' : 'edit'} scenario)
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {scenePrompts.length === 0 && (
-              <div className="px-2 py-2 text-xs text-muted-foreground">暂无模板</div>
+              <div className="px-2 py-2 text-xs text-muted-foreground">No templates yet</div>
             )}
             {scenePrompts.map((p) => (
               <DropdownMenuItem
@@ -160,8 +160,8 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
               >
                 <div className="flex items-center gap-1 w-full">
                   <span className="text-xs font-medium">{p.name}</span>
-                  {p.builtin && <span className="text-[10px] text-violet-300 ml-auto">内置</span>}
-                  {p.isDefault && <span className="text-[10px] text-emerald-400">默认</span>}
+                  {p.builtin && <span className="text-[10px] text-violet-300 ml-auto">Built-in</span>}
+                  {p.isDefault && <span className="text-[10px] text-emerald-400">Default</span>}
                 </div>
                 <span className="text-[10px] text-muted-foreground line-clamp-1 w-full">
                   {p.content.split('\n')[0]}
@@ -170,7 +170,7 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={onOpenSettings}>
-              <Settings2 className="h-3 w-3" /> 管理 Skill 模板…
+              <Settings2 className="h-3 w-3" /> Manage Skill templates…
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -185,34 +185,34 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
                 : 'border-border/60 text-muted-foreground hover:text-foreground',
             )}
             title={useTools === false
-              ? '已禁用 Tool 调用（点恢复默认、AI 将获得 read/write/replace 文件能力）'
-              : '默认启用 Tool 调用（AI 可以读写、增量修改文件）；点击切换为传整文档'}
+              ? 'Tool calls disabled (click to restore default; AI gets read/write/replace file access)'
+              : 'Tool calls enabled by default (AI can read/write and incrementally edit files); click to switch to sending the whole document'}
           >
             <Wrench className="h-3 w-3" /> Tool
           </button>
         )}
       </div>
 
-      {/* 配置警告 */}
+      {/* Config warning */}
       {!configured && (
         <div className="m-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs">
-          ⚠️ 还未配置 AI。
+          ⚠️ AI is not configured yet.
           <button className="ml-2 underline text-amber-300" onClick={onOpenSettings}>
-            前往设置
+            Go to settings
           </button>
         </div>
       )}
 
-      {/* 消息列表 */}
+      {/* Message list */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
         {messages.length === 0 && (
           <div className="text-center pt-6 pb-2">
             <div className="mx-auto h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-pink-500/30 flex items-center justify-center mb-3">
               <Sparkles className="h-5 w-5 text-violet-300" />
             </div>
-            <div className="text-sm font-medium">告诉 AI 你想要什么</div>
+            <div className="text-sm font-medium">Tell the AI what you want</div>
             <div className="text-[11px] text-muted-foreground mt-1">
-              首条创建文档；之后 AI 通过工具增量修改文件
+              The first message creates the document; after that the AI edits files incrementally via tools
             </div>
           </div>
         )}
@@ -222,7 +222,7 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
         ))}
       </div>
 
-      {/* 建议 chips */}
+      {/* Suggestion chips */}
       <div className="px-3 pb-2 flex flex-wrap gap-1.5">
         {suggestions.map((s) => (
           <button
@@ -237,7 +237,7 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
         ))}
       </div>
 
-      {/* 输入区 */}
+      {/* Input area */}
       <div className="border-t border-border/60 p-3 space-y-2">
         <Textarea
           rows={3}
@@ -245,20 +245,20 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={isFirst
-            ? '描述你想要的 HTML 文档…\n例如：做一份关于 XX 的精美单页'
-            : '继续告诉 AI 你想怎么改…'}
+            ? 'Describe the HTML document you want…\ne.g. "A polished single-page site about XYZ"'
+            : 'Keep telling the AI what to change…'}
           disabled={running}
           className="resize-none text-sm"
         />
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground flex-1">
             {running
-              ? '正在生成…'
-              : <>按 <kbd className="px-1 rounded bg-muted/50 border border-border/60">⌘</kbd>/<kbd className="px-1 rounded bg-muted/50 border border-border/60">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted/50 border border-border/60">Enter</kbd> 发送</>}
+              ? 'Generating…'
+              : <>Press <kbd className="px-1 rounded bg-muted/50 border border-border/60">⌘</kbd>/<kbd className="px-1 rounded bg-muted/50 border border-border/60">Ctrl</kbd>+<kbd className="px-1 rounded bg-muted/50 border border-border/60">Enter</kbd> to send</>}
           </span>
           {running ? (
             <Button variant="destructive" size="sm" onClick={stop}>
-              <Square /> 停止
+              <Square /> Stop
             </Button>
           ) : (
             <Button
@@ -266,7 +266,7 @@ export function AIChatPanel({ doc, onClose, onOpenSettings }: Props) {
               onClick={submit}
               disabled={!prompt.trim() || !configured}
             >
-              <Sparkles /> 发送
+              <Sparkles /> Send
             </Button>
           )}
         </div>
@@ -310,12 +310,12 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           )}
           <span className="text-xs font-medium">
             {msg.streaming
-              ? (isToolMode ? 'AI 正在工作…' : '正在生成 HTML…')
+              ? (isToolMode ? 'AI is working…' : 'Generating HTML…')
               : msg.error
-                ? '生成失败'
+                ? 'Generation failed'
                 : msg.aborted
-                  ? '已停止'
-                  : (isToolMode ? '已完成' : '已生成')}
+                  ? 'Stopped'
+                  : (isToolMode ? 'Done' : 'Generated')}
           </span>
           {!isToolMode && (
             <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
@@ -324,7 +324,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           )}
         </div>
 
-        {/* 工具调用区 */}
+        {/* Tool call section */}
         {hasTools && (
           <div className="space-y-1.5 mb-1.5">
             {(msg.toolCalls ?? []).map((tc, i) => (
@@ -333,7 +333,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           </div>
         )}
 
-        {/* 模型解释文本 */}
+        {/* Model explanation text */}
         {isToolMode && msg.text && (
           <div className="text-xs text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">
             {msg.text}
@@ -347,8 +347,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         {!hasTools && !isToolMode && !msg.error && (
           <div className="text-[11px] text-muted-foreground rounded-md bg-muted/30 px-2 py-1.5 leading-relaxed">
             {msg.streaming
-              ? '✍️ 内容正在写入文件，左侧编辑器与预览会实时刷新。'
-              : '✅ HTML 已写入文件。可在左侧切换"代码 / 分屏 / 预览"查看。'}
+              ? '✍️ Content is being written to the file — the editor and preview on the left refresh live.'
+              : '✅ HTML has been written to the file. Switch between "Code / Split / Preview" on the left to view it.'}
           </div>
         )}
       </div>
@@ -359,7 +359,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 function ToolCallCard({ tc }: { tc: ToolCallView }) {
   const [expanded, setExpanded] = useState(false)
 
-  // 解析参数（即使不完整也尝试）
+  // Parse args (attempt even if incomplete)
   const parsed = useMemo(() => {
     try { return JSON.parse(tc.argsBuf || '{}') } catch { return null }
   }, [tc.argsBuf])
@@ -381,7 +381,7 @@ function ToolCallCard({ tc }: { tc: ToolCallView }) {
     ? 'text-violet-400 animate-spin'
     : status === 'ok' ? 'text-emerald-400' : 'text-destructive'
 
-  // 一行摘要
+  // One-line summary
   const oneLine = (() => {
     if (tc.summary) return tc.summary
     if (parsed?.path) return parsed.path
@@ -404,15 +404,15 @@ function ToolCallCard({ tc }: { tc: ToolCallView }) {
       </button>
       {expanded && (
         <div className="px-2 pb-2 space-y-1.5">
-          {/* 参数 */}
-          <Field label="参数">
+          {/* Args */}
+          <Field label="Args">
             <pre className="text-[10px] whitespace-pre-wrap break-all bg-background/60 rounded px-2 py-1 max-h-40 overflow-y-auto leading-relaxed">
               {parsed ? JSON.stringify(parsed, null, 2) : tc.argsBuf}
             </pre>
           </Field>
-          {/* 结果 */}
+          {/* Result */}
           {tc.done && (
-            <Field label="结果">
+            <Field label="Result">
               <div className={cn(
                 'text-[11px] rounded px-2 py-1 break-words',
                 tc.error

@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils'
 interface Props {
   doc: DocNode
   filePath: string
-  /** 外部触发重拉文件内容（如 WebSocket reload、AI 流式写入） */
+  /** Bump to trigger an external refetch of the file content (e.g. WebSocket reload, AI streaming writes) */
   externalReloadKey?: number
-  onSavedExternally?: () => void  // 保存成功后触发预览刷新
+  onSavedExternally?: () => void  // triggers a preview refresh after a successful save
 }
 
 type Status = 'idle' | 'loading' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -37,7 +37,7 @@ export function CodeEditor({ doc, filePath, externalReloadKey, onSavedExternally
   const dirtyRef = useRef(false)
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
 
-  // 加载文件（doc/filePath 变化时重新加载）
+  // Load the file (reload when doc/filePath changes)
   useEffect(() => {
     setStatus('loading')
     setErrorMsg(null)
@@ -48,13 +48,13 @@ export function CodeEditor({ doc, filePath, externalReloadKey, onSavedExternally
         setStatus('saved')
       })
       .catch((e) => {
-        setErrorMsg(e?.response?.data?.error ?? '加载失败')
+        setErrorMsg(e?.response?.data?.error ?? 'Failed to load')
         setStatus('error')
       })
   }, [doc.id, filePath])
 
-  // 外部变动（如 AI 流式写入、文件夹热更新）触发重读。
-  // 仅未 dirty 时覆盖，避免打断用户编辑。AI 流式写入期间 dirtyRef 为 false，会被实时覆盖。
+  // External changes (AI streaming writes, folder hot-reload) trigger a reread.
+  // Only overwrites when not dirty, so we don't interrupt the user's edits. dirtyRef is false during AI streaming, so it gets overwritten live.
   useEffect(() => {
     if (externalReloadKey === undefined) return
     if (dirtyRef.current) return
@@ -76,12 +76,12 @@ export function CodeEditor({ doc, filePath, externalReloadKey, onSavedExternally
       setStatus('saved')
       onSavedExternally?.()
     } catch (e: any) {
-      setErrorMsg(e?.response?.data?.error ?? e?.message ?? '保存失败')
+      setErrorMsg(e?.response?.data?.error ?? e?.message ?? 'Failed to save')
       setStatus('error')
     }
   }
 
-  // Cmd/Ctrl+S 保存
+  // Cmd/Ctrl+S to save
   const handleMount: OnMount = (ed, monaco) => {
     editorRef.current = ed
     ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -106,7 +106,7 @@ export function CodeEditor({ doc, filePath, externalReloadKey, onSavedExternally
             'hover:bg-accent disabled:opacity-50',
           )}
         >
-          <Save className="h-3 w-3" /> 保存 <kbd className="ml-1 text-[10px] opacity-60">⌘S</kbd>
+          <Save className="h-3 w-3" /> Save <kbd className="ml-1 text-[10px] opacity-60">⌘S</kbd>
         </button>
       </div>
 
@@ -141,11 +141,11 @@ export function CodeEditor({ doc, filePath, externalReloadKey, onSavedExternally
 }
 
 function StatusBadge({ status, error }: { status: Status; error: string | null }) {
-  if (status === 'loading') return <Inline icon={<Loader2 className="h-3 w-3 animate-spin" />} text="加载中" />
-  if (status === 'saving')  return <Inline icon={<Loader2 className="h-3 w-3 animate-spin" />} text="保存中" />
-  if (status === 'saved')   return <Inline icon={<CheckCircle2 className="h-3 w-3 text-emerald-500" />} text="已保存" />
-  if (status === 'dirty')   return <Inline icon={<span className="h-1.5 w-1.5 rounded-full bg-amber-400" />} text="未保存" />
-  if (status === 'error')   return <span className="text-destructive">{error ?? '错误'}</span>
+  if (status === 'loading') return <Inline icon={<Loader2 className="h-3 w-3 animate-spin" />} text="Loading" />
+  if (status === 'saving')  return <Inline icon={<Loader2 className="h-3 w-3 animate-spin" />} text="Saving" />
+  if (status === 'saved')   return <Inline icon={<CheckCircle2 className="h-3 w-3 text-emerald-500" />} text="Saved" />
+  if (status === 'dirty')   return <Inline icon={<span className="h-1.5 w-1.5 rounded-full bg-amber-400" />} text="Unsaved" />
+  if (status === 'error')   return <span className="text-destructive">{error ?? 'Error'}</span>
   return null
 }
 function Inline({ icon, text }: { icon: React.ReactNode; text: string }) {

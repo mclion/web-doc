@@ -11,7 +11,7 @@ import { useDocsStore } from '@/store/docs'
 interface Props {
   open: boolean
   onOpenChange: (v: boolean) => void
-  /** 'create' 时使用 parentId；'edit'/'rewrite' 时使用 doc */
+  /** parentId is used in 'create' mode; doc is used in 'edit'/'rewrite' mode */
   mode: 'create' | 'edit' | 'rewrite'
   parentId?: string | null
   doc?: DocNode | null
@@ -19,16 +19,16 @@ interface Props {
 }
 
 const SUGGESTIONS_CREATE = [
-  '一个产品发布会的精美单页：英雄区 + 特性卡片 + 数据统计 + 时间线 + CTA',
-  '一份周报，包含核心指标卡片、本周完成事项时间线、下周计划清单',
-  '团队介绍页：成员卡片网格、技能雷达图、联系方式',
-  '一份会议纪要：主题、参会人、议题展开折叠、决议高亮、待办清单',
+  'A polished single-page product launch site: hero + feature cards + stats + timeline + CTA',
+  'A weekly report with key-metric cards, a timeline of this week\'s completed items, and next week\'s plan',
+  'A team page: member card grid, skill radar chart, contact info',
+  'Meeting notes: topic, attendees, collapsible agenda items, highlighted decisions, a to-do list',
 ]
 const SUGGESTIONS_EDIT = [
-  '把整体配色改为暖色调（橙/赭/米白），保持现代风',
-  '把标题字号调大，增加段落留白，改善中文阅读体验',
-  '把数据卡片改成可点击的，hover 时有微动画',
-  '增加一个深色/浅色模式切换按钮',
+  'Switch the overall palette to warm tones (orange/ochre/off-white), keeping a modern look',
+  'Increase the heading size and add more paragraph spacing for better readability',
+  'Make the data cards clickable, with a subtle hover animation',
+  'Add a dark/light mode toggle button',
 ]
 
 export function AIGenerateDialog({
@@ -66,7 +66,7 @@ export function AIGenerateDialog({
       },
       {
         onMeta: async (m) => {
-          // create 模式：服务端会立刻创建 doc，我们提前选中以便实时预览
+          // create mode: the server creates the doc immediately, so we select it early for a live preview
           if (isCreate && m.docId) {
             await loadAll()
             selectDoc(m.docId)
@@ -94,23 +94,23 @@ export function AIGenerateDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-violet-400" />
-            {isCreate ? 'AI 生成新文档' : 'AI 改写当前文档'}
+            {isCreate ? 'Generate a new document with AI' : 'Rewrite current document with AI'}
           </DialogTitle>
           <DialogDescription>
             {isCreate
-              ? '描述你想要的 HTML 文档，AI 将流式生成并实时预览。'
-              : '描述你想要的修改，AI 会基于现有内容重新生成。'}
+              ? 'Describe the HTML document you want; AI will stream it out with a live preview.'
+              : 'Describe the changes you want; AI will regenerate based on the current content.'}
           </DialogDescription>
         </DialogHeader>
 
         {!configured && (
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-            ⚠️ 还未配置 AI。
+            ⚠️ AI is not configured yet.
             <button
               className="ml-2 underline text-amber-300"
               onClick={() => { onOpenChange(false); onOpenSettings() }}
             >
-              前往设置
+              Go to settings
             </button>
           </div>
         )}
@@ -121,8 +121,8 @@ export function AIGenerateDialog({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={isCreate
-              ? '例如：做一份关于 Web 文档站项目的精美产品介绍页…'
-              : '例如：把配色改为深色科技风…'}
+              ? 'e.g. Build a polished product overview page for the Web-Doc project…'
+              : 'e.g. Switch the palette to a dark, tech-inspired theme…'}
             disabled={running}
           />
           <div className="flex flex-wrap gap-1.5">
@@ -141,7 +141,7 @@ export function AIGenerateDialog({
           {running && (
             <div className="rounded-md border border-violet-500/40 bg-violet-500/10 p-3 text-xs flex items-center gap-2">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-300" />
-              <span>正在生成… 已接收 {received} 字符（左侧预览会实时刷新）</span>
+              <span>Generating… {received} characters received (the preview on the left updates live)</span>
             </div>
           )}
           {error && (
@@ -153,16 +153,16 @@ export function AIGenerateDialog({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onOpenSettings} disabled={running}>
-            <Wand2 /> AI 设置
+            <Wand2 /> AI Settings
           </Button>
           <div className="flex-1" />
           {running ? (
             <Button variant="destructive" onClick={stop}>
-              <Square /> 停止
+              <Square /> Stop
             </Button>
           ) : (
             <Button variant="gradient" onClick={start} disabled={!prompt.trim() || !configured}>
-              <Sparkles /> {isCreate ? '开始生成' : '开始改写'}
+              <Sparkles /> {isCreate ? 'Start generating' : 'Start rewriting'}
             </Button>
           )}
         </DialogFooter>

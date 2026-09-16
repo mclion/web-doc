@@ -67,8 +67,17 @@ func (h *Handler) CreateNode(c *gin.Context) {
 	if strings.TrimSpace(req.Title) == "" {
 		req.Title = "未命名"
 	}
+	uid := getLocal(c, "userID")
+	if req.ParentID != nil && *req.ParentID != "" {
+		var parent model.Node
+		if err := h.DB.Select("id", "owner_id").First(&parent, "id = ?", *req.ParentID).Error; err != nil || parent.OwnerID != uid {
+			notFound(c)
+			return
+		}
+	}
 	n := model.Node{
 		ID:         uuid.NewString(),
+		OwnerID:    uid,
 		ParentID:   req.ParentID,
 		Type:       req.Type,
 		Title:      req.Title,
@@ -91,8 +100,9 @@ func (h *Handler) CreateNode(c *gin.Context) {
 }
 
 func (h *Handler) ListNodes(c *gin.Context) {
+	uid := getLocal(c, "userID")
 	var nodes []model.Node
-	if err := h.DB.Order("type desc, sort_order asc, created_at asc").Find(&nodes).Error; err != nil {
+	if err := h.DB.Where("owner_id = ?", uid).Order("type desc, sort_order asc, created_at asc").Find(&nodes).Error; err != nil {
 		log.Printf("[web-doc api] ListNodes failed path=%s userID=%q username=%q error=%v", c.Request.URL.RequestURI(), getLocal(c, "userID"), getLocal(c, "username"), err)
 		serverError(c, err)
 		return
@@ -109,10 +119,9 @@ func (h *Handler) ListNodes(c *gin.Context) {
 
 func (h *Handler) GetNode(c *gin.Context) {
 	id := c.Param("id")
-	var n model.Node
-	if err := h.DB.First(&n, "id = ?", id).Error; err != nil {
-		log.Printf("[web-doc api] GetNode not found path=%s id=%q userID=%q username=%q error=%v", c.Request.URL.RequestURI(), id, getLocal(c, "userID"), getLocal(c, "username"), err)
-		notFound(c)
+	n, ok := h.loadOwnedNode(c, id, false)
+	if !ok {
+		log.Printf("[web-doc api] GetNode not found/forbidden path=%s id=%q userID=%q username=%q", c.Request.URL.RequestURI(), id, getLocal(c, "userID"), getLocal(c, "username"))
 		return
 	}
 	if n.Type == "doc" {
@@ -134,9 +143,8 @@ type updateNodeReq struct {
 
 func (h *Handler) UpdateNode(c *gin.Context) {
 	id := c.Param("id")
-	var n model.Node
-	if err := h.DB.First(&n, "id = ?", id).Error; err != nil {
-		notFound(c)
+	n, ok := h.loadOwnedNode(c, id, false)
+	if !ok {
 		return
 	}
 	var req updateNodeReq
@@ -171,26 +179,29 @@ func (h *Handler) UpdateNode(c *gin.Context) {
 
 func (h *Handler) DeleteNode(c *gin.Context) {
 	id := c.Param("id")
-	var n model.Node
-	if err := h.DB.First(&n, "id = ?", id).Error; err != nil {
-		notFound(c)
+	n, ok := h.loadOwnedNode(c, id, false)
+	if !ok {
 		return
 	}
-	// 文件夹：递归删除子节点
-	if n.Type == "folder" {
-		if err := h.deleteRecursive(id); err != nil {
-			serverError(c, err)
-			return
-		}
-	} else {
-		_ = h.Storage.RemoveDoc(id)
-		h.DB.Where("doc_id = ?", id).Delete(&model.Share{})
+	if err := h.deleteNodeTree(n); err != nil {
+		serverError(c, err)
+		return
 	}
 	if err := h.DB.Delete(&n).Error; err != nil {
 		serverError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// deleteNodeTree 删除一个节点自身持有的内容：文件夹递归删除子节点；文档删除存储文件与分享记录。
+// 不删除节点自身的 DB 行——调用方负责（DeleteNode / 管理员级联删除用户时各自决定是否软删除该行）。
+func (h *Handler) deleteNodeTree(n model.Node) error {
+	if n.Type == "folder" {
+		return h.deleteRecursive(n.ID)
+	}
+	_ = h.Storage.RemoveDoc(n.ID)
+	return h.DB.Where("doc_id = ?", n.ID).Delete(&model.Share{}).Error
 }
 
 func (h *Handler) deleteRecursive(parentID string) error {
@@ -224,9 +235,8 @@ type uploadHTMLReq struct {
 
 func (h *Handler) UploadHTML(c *gin.Context) {
 	id := c.Param("id")
-	var n model.Node
-	if err := h.DB.First(&n, "id = ? AND type = 'doc'", id).Error; err != nil {
-		notFound(c)
+	n, ok := h.loadOwnedNode(c, id, true)
+	if !ok {
 		return
 	}
 	var req uploadHTMLReq
@@ -250,9 +260,8 @@ func (h *Handler) UploadHTML(c *gin.Context) {
 // UploadZip 上传 zip 解压到文档目录
 func (h *Handler) UploadZip(c *gin.Context) {
 	id := c.Param("id")
-	var n model.Node
-	if err := h.DB.First(&n, "id = ? AND type = 'doc'", id).Error; err != nil {
-		notFound(c)
+	n, ok := h.loadOwnedNode(c, id, true)
+	if !ok {
 		return
 	}
 	fh, err := c.FormFile("file")
@@ -302,6 +311,9 @@ func (h *Handler) UploadZip(c *gin.Context) {
 // GetFileContent 读取文档下指定文件文本内容（用于编辑器）
 func (h *Handler) GetFileContent(c *gin.Context) {
 	id := c.Param("id")
+	if _, ok := h.loadOwnedNode(c, id, true); !ok {
+		return
+	}
 	sub := c.DefaultQuery("path", "index.html")
 	full, err := h.Storage.ResolveSafe(id, sub)
 	if err != nil {
@@ -328,6 +340,11 @@ func (h *Handler) ServeDocAsset(c *gin.Context) {
 	}
 	var n model.Node
 	if err := h.DB.First(&n, "id = ? AND type = 'doc'", id).Error; err != nil {
+		c.String(http.StatusNotFound, "Not Found")
+		return
+	}
+	uid := getLocal(c, "userID")
+	if n.Visibility != "public" && (uid == "" || n.OwnerID != uid) {
 		c.String(http.StatusNotFound, "Not Found")
 		return
 	}
@@ -367,10 +384,16 @@ func (h *Handler) ServeDocAsset(c *gin.Context) {
 
 func (h *Handler) CreateShare(c *gin.Context) {
 	id := c.Param("id")
-	var n model.Node
-	if err := h.DB.First(&n, "id = ? AND type = 'doc'", id).Error; err != nil {
-		notFound(c)
+	n, ok := h.loadOwnedNode(c, id, true)
+	if !ok {
 		return
+	}
+	if n.Visibility != "public" {
+		n.Visibility = "public"
+		if err := h.DB.Save(&n).Error; err != nil {
+			serverError(c, err)
+			return
+		}
 	}
 	// 复用已有未过期分享
 	var existing model.Share
@@ -418,6 +441,16 @@ func (h *Handler) GetShareInfo(c *gin.Context) {
 
 func (h *Handler) WSDocWatch(c *gin.Context) {
 	docID := c.Param("id")
+	var n model.Node
+	if err := h.DB.First(&n, "id = ? AND type = 'doc'", docID).Error; err != nil {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+	uid := getLocal(c, "userID")
+	if n.Visibility != "public" && (uid == "" || n.OwnerID != uid) {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
 	conn, err := h.wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		// Upgrade 失败时它内部已写过响应；这里只记录日志
@@ -453,6 +486,28 @@ func (h *Handler) WSDocWatch(c *gin.Context) {
 			}
 		}
 	}
+}
+
+// ---------- 所有权校验 ----------
+
+// loadOwnedNode 按 id 查找节点，并校验其属于当前登录用户；不属于/不存在时统一返回 404
+// （不用 403，避免向调用方泄露该 id 是否存在）。docOnly 为 true 时仅匹配 type='doc'。
+func (h *Handler) loadOwnedNode(c *gin.Context, id string, docOnly bool) (model.Node, bool) {
+	var n model.Node
+	q := h.DB
+	if docOnly {
+		q = q.Where("type = 'doc'")
+	}
+	if err := q.First(&n, "id = ?", id).Error; err != nil {
+		notFound(c)
+		return n, false
+	}
+	uid := getLocal(c, "userID")
+	if uid == "" || n.OwnerID != uid {
+		notFound(c)
+		return n, false
+	}
+	return n, true
 }
 
 // ---------- 工具函数 ----------

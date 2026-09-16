@@ -26,9 +26,9 @@ export function ShareDialog({
     }
   }, [open, doc])
 
-  // 默认分享链接：/s/:token 打开后会自动跳转到 /v/:docId（带完整主站外壳）。
-  // 访问者如需隐藏主站顶部和左侧菜单，可使用 ?fullscreen 链接（仍然是 React 外壳 + iframe，仅视觉隐藏菜单）。
-  // 注意：必须拼上 Vite 构建时的 BASE_URL（如 /doc/），否则在反向代理（nginx 暴露 /doc/）下链接会 404。
+  // Default share link: opening /s/:token redirects automatically to /v/:docId (with the full main-site shell).
+  // Visitors who want the top bar and left menu hidden can use the ?fullscreen link (still React shell + iframe, just visually hides the menu).
+  // Note: must be prefixed with Vite's build-time BASE_URL (e.g. /doc/), otherwise the link 404s behind a reverse proxy (nginx exposing /doc/).
   const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '')
   const url = token ? `${location.origin}${baseUrl}/s/${token}` : ''
   const fullscreenUrl = token ? `${location.origin}${baseUrl}/s/${token}?fullscreen=1` : ''
@@ -40,8 +40,8 @@ export function ShareDialog({
       setCopied(true)
       setTimeout(() => setCopied(false), 1600)
     } else {
-      // 兜底：复制失败时提示用户手动选中复制（多见于非 HTTPS 站点 + 浏览器禁用了 execCommand）
-      window.prompt('复制失败，请手动按 Ctrl/Cmd+C 复制：', target)
+      // Fallback: prompt the user to copy manually when clipboard write fails (common on non-HTTPS sites where the browser disables execCommand)
+      window.prompt('Copy failed — press Ctrl/Cmd+C to copy manually:', target)
     }
   }
 
@@ -51,29 +51,29 @@ export function ShareDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link className="h-5 w-5 text-primary" />
-            分享 "{doc?.title}"
+            Share "{doc?.title}"
           </DialogTitle>
           <DialogDescription>
-            通过链接分享这个文档，访问者无需登录即可查看。
+            Share this document via link; visitors can view it without logging in.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-2 pt-2">
-          <Input value={url} readOnly placeholder="生成中…" className="font-mono text-xs" />
+          <Input value={url} readOnly placeholder="Generating…" className="font-mono text-xs" />
           <Button onClick={() => copy(url)} disabled={!url} variant={copied ? 'default' : 'gradient'}>
-            {copied ? <><Check /> 已复制</> : <><Copy /> 复制</>}
+            {copied ? <><Check /> Copied</> : <><Copy /> Copy</>}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground pt-1">
-          默认链接：访问者会看到完整的文档站（顶部＋左侧菜单）。
+          Default link: visitors see the full document site (top bar + left menu).
         </p>
         <div className="flex items-center gap-2 pt-2">
-          <Input value={fullscreenUrl} readOnly placeholder="生成中…" className="font-mono text-xs" />
+          <Input value={fullscreenUrl} readOnly placeholder="Generating…" className="font-mono text-xs" />
           <Button onClick={() => copy(fullscreenUrl)} disabled={!fullscreenUrl} variant="outline">
-            <Copy /> 复制
+            <Copy /> Copy
           </Button>
         </div>
         <p className="text-xs text-muted-foreground pt-1">
-          全屏链接（?fullscreen）：隐藏主站顶部和左侧菜单，只展示文档内容（仍保留 iframe 隔离）。
+          Fullscreen link (?fullscreen): hides the top bar and left menu, showing only the document content (iframe isolation is preserved).
         </p>
       </DialogContent>
     </Dialog>

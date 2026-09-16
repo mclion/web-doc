@@ -1,16 +1,16 @@
 import axios from 'axios'
 
-// Vite 构建期注入的部署前缀，例如 '/' 或 '/doc/'。始终以 '/' 结尾。
-// 运行时把它当作所有后端路径的前缀，从而支持反向代理子路径部署。
-const BASE = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') // 去掉末尾斜杠，便于后续拼接
+// Deploy prefix injected at Vite build time, e.g. '/' or '/doc/'. Always ends with '/'.
+// Used at runtime as the prefix for all backend paths, to support reverse-proxy subpath deployments.
+const BASE = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') // strip the trailing slash for easier concatenation
 
-/** 拼接相对于站点前缀的绝对路径，例如 prefixed('/api') => '/doc/api' */
+/** Joins an absolute path onto the site prefix, e.g. prefixed('/api') => '/doc/api' */
 export function prefixed(p: string): string {
   if (!p.startsWith('/')) p = '/' + p
   return BASE + p
 }
 
-// ---------- 鉴权 Token 存取 ----------
+// ---------- Auth token storage ----------
 const TOKEN_KEY = 'webdoc.token'
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
@@ -25,7 +25,7 @@ export const api = axios.create({
   timeout: 30_000,
 })
 
-// 自动附加 Bearer Token
+// Automatically attach the Bearer token
 api.interceptors.request.use((cfg) => {
   const t = getToken()
   if (t) {
@@ -35,7 +35,7 @@ api.interceptors.request.use((cfg) => {
   return cfg
 })
 
-// 401 时清除 token，并广播事件供上层弹出登录
+// On 401, clear the token and broadcast an event so a higher layer can show the login dialog
 api.interceptors.response.use(
   (r) => r,
   (err) => {
@@ -47,9 +47,9 @@ api.interceptors.response.use(
   },
 )
 
-// 文档静态资源根路径（生产可换成独立子域名）
+// Document static-asset root path (can be swapped for a dedicated subdomain in production)
 export const DOC_ASSET_BASE = prefixed('/d')
-// WebSocket 路径
+// WebSocket path
 export const WS_BASE =
   (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + prefixed('/ws')
 
@@ -57,6 +57,7 @@ export type NodeType = 'folder' | 'doc'
 
 export interface DocNode {
   id: string
+  ownerId?: string
   parentId?: string | null
   type: NodeType
   title: string
@@ -163,14 +164,14 @@ export interface AIGenerateParams {
   docId?: string
   parentId?: string | null
   title?: string
-  promptId?: string  // 可选：指定 Prompt 模板
-  useTools?: boolean // 可选：覆盖全局设置
+  promptId?: string  // optional: select a prompt template
+  useTools?: boolean // optional: override the global setting
 }
 
 export interface AIToolCallView {
   id: string
   name: string
-  argsBuf: string  // 累积参数字符串（实时拼接）
+  argsBuf: string  // accumulated args string (appended live)
   ok?: boolean
   summary?: string
   error?: string
@@ -189,8 +190,8 @@ export interface AIGenerateHandlers {
 }
 
 /**
- * 通过 fetch + ReadableStream 解析 SSE。
- * 返回一个 abort 函数。
+ * Parses SSE via fetch + ReadableStream.
+ * Returns an abort function.
  */
 export function aiGenerate(params: AIGenerateParams, handlers: AIGenerateHandlers): () => void {
   const ctrl = new AbortController()
@@ -209,7 +210,7 @@ export function aiGenerate(params: AIGenerateParams, handlers: AIGenerateHandler
       if (res.status === 401) {
         setToken(null)
         window.dispatchEvent(new CustomEvent('webdoc:unauthorized'))
-        handlers.onError?.('请先登录')
+        handlers.onError?.('Please log in first')
         return
       }
       if (!res.ok) {
@@ -224,7 +225,7 @@ export function aiGenerate(params: AIGenerateParams, handlers: AIGenerateHandler
         const { done, value } = await reader.read()
         if (done) break
         buffer += decoder.decode(value, { stream: true })
-        // 解析 SSE：以 \n\n 分隔事件
+        // Parse SSE: events are separated by \n\n
         let idx
         while ((idx = buffer.indexOf('\n\n')) >= 0) {
           const raw = buffer.slice(0, idx)
@@ -246,7 +247,7 @@ export function aiGenerate(params: AIGenerateParams, handlers: AIGenerateHandler
             else if (event === 'tool_result') handlers.onToolResult?.(obj)
             else if (event === 'round') handlers.onRound?.(obj)
             else if (event === 'done') handlers.onDone?.(obj)
-            else if (event === 'error') handlers.onError?.(obj.message || '生成失败')
+            else if (event === 'error') handlers.onError?.(obj.message || 'Generation failed')
           } catch {
             /* ignore */
           }
@@ -259,7 +260,7 @@ export function aiGenerate(params: AIGenerateParams, handlers: AIGenerateHandler
   return () => ctrl.abort()
 }
 
-// ---------- 拖拽排序 ----------
+// ---------- Drag-and-drop reorder ----------
 
 export interface ReorderItem {
   id: string
@@ -276,7 +277,7 @@ export const NodesReorder = {
 export interface MCPToken {
   id: string
   name: string
-  token: string // 列表中是掩码；create 接口返回时为完整明文
+  token: string // masked in list responses; the create endpoint returns the full plaintext token
   lastUsedAt?: string | null
   createdAt: string
 }
@@ -290,7 +291,7 @@ export const MCP = {
     api.delete(`/mcp/tokens/${id}`).then(r => r.data),
 }
 
-/** MCP 服务端点（默认与当前站点同源，自动带上部署前缀） */
+/** MCP server endpoint (same-origin as the current site by default, with the deploy prefix applied automatically) */
 export function mcpEndpoint(): string {
   return location.origin + prefixed('/mcp')
 }
@@ -303,6 +304,7 @@ export interface AuthUser {
   email?: string
   displayName?: string
   role: 'admin' | 'user'
+  createdAt?: string
 }
 
 export const Auth = {
@@ -313,4 +315,16 @@ export const Auth = {
   login: (p: { username: string; password: string }) =>
     api.post<{ user: AuthUser; token: string }>('/auth/login', p).then(r => r.data),
   me: () => api.get<{ user: AuthUser }>('/auth/me').then(r => r.data.user),
+}
+
+// ---------- Admin ----------
+
+export const Admin = {
+  listUsers: () =>
+    api.get<{ items: AuthUser[] }>('/admin/users').then(r => r.data.items),
+  createUser: (p: { username: string; password: string; email?: string; displayName?: string; role?: 'admin' | 'user' }) =>
+    api.post<{ user: AuthUser }>('/admin/users', p).then(r => r.data.user),
+  updateUser: (id: string, patch: Partial<{ role: 'admin' | 'user'; displayName: string; email: string; password: string }>) =>
+    api.patch<{ user: AuthUser }>(`/admin/users/${id}`, patch).then(r => r.data.user),
+  deleteUser: (id: string) => api.delete(`/admin/users/${id}`).then(r => r.data),
 }
