@@ -23,8 +23,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # 与 nginx 反代前缀保持一致；如直接挂在域名根下，改为 "/"。
-        VITE_BASE: "/doc/"
+        # 与 nginx 反代前缀保持一致；如反代到子路径而非域名根下，改为该子路径，例如 "/doc/"。
+        VITE_BASE: "/"
     image: web-doc:local
     pull_policy: build
     container_name: web-doc-server
