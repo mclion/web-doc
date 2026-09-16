@@ -78,7 +78,12 @@ if (typeof window !== 'undefined') {
   window.addEventListener('webdoc:unauthorized', () => {
     const { user, openLogin } = useAuthStore.getState()
     useAuthStore.setState({ user: null, token: null })
-    useDocsStore.getState().reset()
-    if (user) openLogin('login')
+    // Only wipe the doc tree if a session actually just expired — an anonymous
+    // visitor's 401 (e.g. an incidental call while viewing a public share) must
+    // not clear the shared doc that's already loaded.
+    if (user) {
+      useDocsStore.getState().reset()
+      openLogin('login')
+    }
   })
 }

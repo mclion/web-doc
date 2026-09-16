@@ -119,7 +119,7 @@ func (h *Handler) ListNodes(c *gin.Context) {
 
 func (h *Handler) GetNode(c *gin.Context) {
 	id := c.Param("id")
-	n, ok := h.loadOwnedNode(c, id, false)
+	n, ok := h.loadViewableNode(c, id, false)
 	if !ok {
 		log.Printf("[web-doc api] GetNode not found/forbidden path=%s id=%q userID=%q username=%q", c.Request.URL.RequestURI(), id, getLocal(c, "userID"), getLocal(c, "username"))
 		return
@@ -311,7 +311,7 @@ func (h *Handler) UploadZip(c *gin.Context) {
 // GetFileContent 读取文档下指定文件文本内容（用于编辑器）
 func (h *Handler) GetFileContent(c *gin.Context) {
 	id := c.Param("id")
-	if _, ok := h.loadOwnedNode(c, id, true); !ok {
+	if _, ok := h.loadViewableNode(c, id, true); !ok {
 		return
 	}
 	sub := c.DefaultQuery("path", "index.html")
@@ -492,6 +492,7 @@ func (h *Handler) WSDocWatch(c *gin.Context) {
 
 // loadOwnedNode 按 id 查找节点，并校验其属于当前登录用户；不属于/不存在时统一返回 404
 // （不用 403，避免向调用方泄露该 id 是否存在）。docOnly 为 true 时仅匹配 type='doc'。
+// 用于写操作（改名/删除/上传/分享等）——分享出去的公开文档也不能被非所有者修改。
 func (h *Handler) loadOwnedNode(c *gin.Context, id string, docOnly bool) (model.Node, bool) {
 	var n model.Node
 	q := h.DB
@@ -504,6 +505,26 @@ func (h *Handler) loadOwnedNode(c *gin.Context, id string, docOnly bool) (model.
 	}
 	uid := getLocal(c, "userID")
 	if uid == "" || n.OwnerID != uid {
+		notFound(c)
+		return n, false
+	}
+	return n, true
+}
+
+// loadViewableNode 与 loadOwnedNode 类似，但用于只读接口：所有者或者已公开（visibility=public）
+// 的节点都可以读取，未登录的匿名访客访问分享出去的文档正是走这条路径（配合路由不挂 AuthRequired）。
+func (h *Handler) loadViewableNode(c *gin.Context, id string, docOnly bool) (model.Node, bool) {
+	var n model.Node
+	q := h.DB
+	if docOnly {
+		q = q.Where("type = 'doc'")
+	}
+	if err := q.First(&n, "id = ?", id).Error; err != nil {
+		notFound(c)
+		return n, false
+	}
+	uid := getLocal(c, "userID")
+	if n.Visibility != "public" && (uid == "" || n.OwnerID != uid) {
 		notFound(c)
 		return n, false
 	}

@@ -206,10 +206,14 @@ func TestShareFlow_PublicAfterShare(t *testing.T) {
 		t.Fatalf("bob should not be able to share alice's doc, got %d %s", rw.Code, rw.Body.String())
 	}
 
-	// asset is not reachable anonymously before sharing
+	// asset/metadata/file content are not reachable anonymously before sharing
 	rw = doReq(app, "GET", "/d/"+docID+"/index.html", "", nil)
 	if rw.Code != http.StatusNotFound {
-		t.Fatalf("unshared doc should 404 anonymously, got %d", rw.Code)
+		t.Fatalf("unshared doc asset should 404 anonymously, got %d", rw.Code)
+	}
+	rw = doReq(app, "GET", "/api/nodes/"+docID, "", nil)
+	if rw.Code != http.StatusNotFound {
+		t.Fatalf("unshared doc node should 404 anonymously, got %d", rw.Code)
 	}
 
 	// alice shares her own doc
@@ -235,6 +239,18 @@ func TestShareFlow_PublicAfterShare(t *testing.T) {
 	rw = doReq(app, "GET", "/d/"+docID+"/index.html", "", nil)
 	if rw.Code != http.StatusOK {
 		t.Fatalf("shared doc asset should be public, got %d %s", rw.Code, rw.Body.String())
+	}
+
+	// regression: DocViewer also needs the node metadata + file content endpoints
+	// to work anonymously once a doc is public (it fetches these to build the
+	// file list / code view even in preview mode) — see the /s/:token flow.
+	rw = doReq(app, "GET", "/api/nodes/"+docID, "", nil)
+	if rw.Code != http.StatusOK {
+		t.Fatalf("shared doc node metadata should be readable anonymously, got %d %s", rw.Code, rw.Body.String())
+	}
+	rw = doReq(app, "GET", "/api/docs/"+docID+"/file?path=index.html", "", nil)
+	if rw.Code != http.StatusOK {
+		t.Fatalf("shared doc file content should be readable anonymously, got %d %s", rw.Code, rw.Body.String())
 	}
 }
 

@@ -58,17 +58,21 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	// 分享只读入口：保持公开/匿名可访问
 	api.GET("/shares/:token", h.GetShareInfo)
 
-	// 节点/文档读写：必须登录，按 owner 隔离（在各 handler 内部完成过滤）
+	// 单个节点/文件内容的只读接口：AuthOptional 即可——handler 内部同时允许
+	// 所有者或已公开(visibility=public)的文档，这样匿名访客打开分享链接时
+	// DocViewer 拉取文件列表/内容不会被 401 挡住。
+	api.GET("/nodes/:id", h.GetNode)
+	api.GET("/docs/:id/file", h.GetFileContent)
+
+	// 节点/文档写操作：必须登录，按 owner 隔离（在各 handler 内部完成过滤）
 	authAPI := api.Group("", h.AuthRequired)
 	authAPI.GET("/nodes", h.ListNodes)
 	authAPI.POST("/nodes", h.CreateNode)
-	authAPI.GET("/nodes/:id", h.GetNode)
 	authAPI.PATCH("/nodes/:id", h.UpdateNode)
 	authAPI.DELETE("/nodes/:id", h.DeleteNode)
 
 	authAPI.POST("/docs/:id/html", h.UploadHTML)
 	authAPI.POST("/docs/:id/zip", h.UploadZip)
-	authAPI.GET("/docs/:id/file", h.GetFileContent)
 	authAPI.POST("/docs/:id/file", h.SaveFile)
 
 	authAPI.POST("/docs/:id/share", h.CreateShare)
