@@ -27,7 +27,8 @@ export const useDocsStore = create<DocsState>((set, get) => ({
   loading: false,
   selectedId: null,
   sharedDocIds: [],
-  sidebarOpen: false,
+  // Open by default on normal-sized screens; collapsed on narrow/mobile viewports.
+  sidebarOpen: typeof window === 'undefined' || window.innerWidth >= 768,
 
   loadAll: async () => {
     set({ loading: true })

@@ -60,12 +60,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // Deliberately does not log the new account in — registering only creates the
+  // account, the caller (AuthDialog/LoginScreen) switches to the login tab after.
   register: async (p) => {
     set({ loading: true })
     try {
-      const { user, token } = await Auth.register(p)
-      setToken(token)
-      set({ user, token, loginOpen: false })
+      await Auth.register(p)
     } finally {
       set({ loading: false })
     }
