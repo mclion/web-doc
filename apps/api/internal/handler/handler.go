@@ -343,7 +343,7 @@ func (h *Handler) ServeDocAsset(c *gin.Context) {
 		c.String(http.StatusNotFound, "Not Found")
 		return
 	}
-	uid := getLocal(c, "userID")
+	uid := h.resolveUID(c)
 	if n.Visibility != "public" && (uid == "" || n.OwnerID != uid) {
 		c.String(http.StatusNotFound, "Not Found")
 		return
@@ -446,7 +446,7 @@ func (h *Handler) WSDocWatch(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-	uid := getLocal(c, "userID")
+	uid := h.resolveUID(c)
 	if n.Visibility != "public" && (uid == "" || n.OwnerID != uid) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return

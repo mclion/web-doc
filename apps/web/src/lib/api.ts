@@ -315,6 +315,7 @@ export const Auth = {
   login: (p: { username: string; password: string }) =>
     api.post<{ user: AuthUser; token: string }>('/auth/login', p).then(r => r.data),
   me: () => api.get<{ user: AuthUser }>('/auth/me').then(r => r.data.user),
+  logout: () => api.post('/auth/logout').catch(() => {}),
 }
 
 // ---------- Admin ----------

@@ -52,6 +52,7 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	app.POST("/api/auth/register", h.AuthRegister)
 	app.POST("/api/auth/login", h.AuthLogin)
 	app.GET("/api/auth/me", h.AuthRequired, h.AuthMe)
+	app.POST("/api/auth/logout", h.AuthLogout)
 
 	api := app.Group("/api")
 

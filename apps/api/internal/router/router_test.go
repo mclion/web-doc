@@ -468,3 +468,73 @@ func TestMCP_TokensRESTScopedToOwner(t *testing.T) {
 		t.Fatalf("alice should only see her own mcp token, got %d", len(out.Items))
 	}
 }
+
+// ---------- iframe/WebSocket auth (cookie fallback) ----------
+
+// <iframe src="/d/:id/..."> and the live-reload WebSocket can't carry an Authorization
+// header, so the owner's own private-doc preview must still work via the auth cookie
+// login sets — this was broken by the owner-scoping change until resolveUID grew a
+// cookie fallback.
+func TestServeDocAsset_OwnerViaCookie(t *testing.T) {
+	app := newTestApp(t)
+	registerUser(t, app, "alice")
+	docID := createDoc(t, app, mustLogin(t, app, "alice").Token, "alice-doc")
+
+	loginRW := doReq(app, "POST", "/api/auth/login", "", map[string]string{"username": "alice", "password": "password123"})
+	if loginRW.Code != http.StatusOK {
+		t.Fatalf("login failed: %d %s", loginRW.Code, loginRW.Body.String())
+	}
+	cookies := loginRW.Result().Cookies()
+	var authCookie *http.Cookie
+	for _, ck := range cookies {
+		if ck.Name == "webdoc_token" {
+			authCookie = ck
+		}
+	}
+	if authCookie == nil {
+		t.Fatalf("login response did not set webdoc_token cookie; got cookies: %+v", cookies)
+	}
+
+	// no Authorization header at all — only the cookie, like a real <iframe> request
+	req := httptest.NewRequest("GET", "/d/"+docID+"/index.html", nil)
+	req.AddCookie(authCookie)
+	rw := httptest.NewRecorder()
+	app.ServeHTTP(rw, req)
+	if rw.Code != http.StatusOK {
+		t.Fatalf("owner should reach their own private doc asset via cookie, got %d %s", rw.Code, rw.Body.String())
+	}
+
+	// a stranger's cookie must not work
+	registerUser(t, app, "bob")
+	bobLoginRW := doReq(app, "POST", "/api/auth/login", "", map[string]string{"username": "bob", "password": "password123"})
+	var bobCookie *http.Cookie
+	for _, ck := range bobLoginRW.Result().Cookies() {
+		if ck.Name == "webdoc_token" {
+			bobCookie = ck
+		}
+	}
+	req2 := httptest.NewRequest("GET", "/d/"+docID+"/index.html", nil)
+	req2.AddCookie(bobCookie)
+	rw2 := httptest.NewRecorder()
+	app.ServeHTTP(rw2, req2)
+	if rw2.Code != http.StatusNotFound {
+		t.Fatalf("bob's cookie should not unlock alice's private doc, got %d", rw2.Code)
+	}
+}
+
+func mustLogin(t *testing.T, app *gin.Engine, username string) registeredUser {
+	t.Helper()
+	rw := doReq(app, "POST", "/api/auth/login", "", map[string]string{"username": username, "password": "password123"})
+	if rw.Code != http.StatusOK {
+		t.Fatalf("login %s failed: %d %s", username, rw.Code, rw.Body.String())
+	}
+	var resp struct {
+		User struct {
+			ID   string `json:"id"`
+			Role string `json:"role"`
+		} `json:"user"`
+		Token string `json:"token"`
+	}
+	json.Unmarshal(rw.Body.Bytes(), &resp)
+	return registeredUser{Token: resp.Token, ID: resp.User.ID, Role: resp.User.Role}
+}

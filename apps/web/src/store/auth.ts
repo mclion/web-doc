@@ -75,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setToken(null)
     set({ user: null, token: null })
     useDocsStore.getState().reset()
+    Auth.logout()
   },
 }))
 
@@ -88,6 +89,7 @@ if (typeof window !== 'undefined') {
     // not clear the shared doc that's already loaded.
     if (user) {
       useDocsStore.getState().reset()
+      Auth.logout()
       openLogin('login')
     }
   })
