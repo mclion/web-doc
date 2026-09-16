@@ -13,6 +13,7 @@ import { CreateDocDialog } from '@/components/CreateDocDialog'
 import { ShareDialog } from '@/components/ShareDialog'
 import { AISettingsDialog } from '@/components/AISettingsDialog'
 import { AuthDialog } from '@/components/AuthDialog'
+import { LoginScreen } from '@/components/LoginScreen'
 import { UserMenu } from '@/components/UserMenu'
 
 export default function HomePage() {
@@ -174,6 +175,13 @@ export default function HomePage() {
         <ShareDialog doc={shareDoc} open={!!shareDoc} onOpenChange={(v) => !v && setShareDoc(null)} />
       </div>
     )
+  }
+
+  // ========== Anonymous, no shared doc open: show a real login page, not a teaser ==========
+  // (A shared doc reached via /s/:token still renders normally below — selectedDoc is
+  // already populated for it before this component ever mounts, see SharePage.)
+  if (!user && !selectedDoc) {
+    return <LoginScreen />
   }
 
   return (
