@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "web-doc": {
+      "type": "http",
+      "url": "${WEBDOC_URL:-http://127.0.0.1:8787}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${WEBDOC_MCP_TOKEN}"
+      }
+    }
+  }
+}

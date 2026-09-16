@@ -25,7 +25,8 @@ services:
       args:
         # 与 nginx 反代前缀保持一致；如直接挂在域名根下，改为 "/"。
         VITE_BASE: "/doc/"
-    image: uswccr.ccs.tencentyun.com/xiaofeng/web-doc:latest
+    image: web-doc:local
+    pull_policy: build
     container_name: web-doc-server
     restart: unless-stopped
     depends_on:
