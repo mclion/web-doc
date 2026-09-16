@@ -19,7 +19,7 @@ import { UserMenu } from '@/components/UserMenu'
 export default function HomePage() {
   const { nodes, loadAll, selectedId, sidebarOpen, toggleSidebar, selectDoc, createNode } = useDocsStore()
   const { openPanel } = useAIChatStore()
-  const { user, bootstrap, openLogin } = useAuthStore()
+  const { user, bootstrap, openLogin, checkingSession } = useAuthStore()
   const [createOpen, setCreateOpen] = useState(false)
   const [createParent, setCreateParent] = useState<string | null>(null)
   const [shareDoc, setShareDoc] = useState<DocNode | null>(null)
@@ -175,6 +175,13 @@ export default function HomePage() {
         <ShareDialog doc={shareDoc} open={!!shareDoc} onOpenChange={(v) => !v && setShareDoc(null)} />
       </div>
     )
+  }
+
+  // While a stored token is still being verified, render nothing rather than
+  // guessing — showing the login page and then swapping to the app a moment
+  // later (once the session turns out valid) is the flash we're avoiding here.
+  if (checkingSession) {
+    return <div className="h-full w-full bg-background" />
   }
 
   // ========== Anonymous, no shared doc open: show a real login page, not a teaser ==========

@@ -6,6 +6,10 @@ interface AuthState {
   user: AuthUser | null
   token: string | null
   loading: boolean
+  // True while a stored token is being verified against the server. Only starts
+  // true when there's a token to check — a visitor with no token at all is known
+  // to be anonymous immediately, no flash needed.
+  checkingSession: boolean
   registerEnabled: boolean
   loginOpen: boolean
   loginMode: 'login' | 'register'
@@ -22,6 +26,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: getToken(),
   loading: false,
+  checkingSession: !!getToken(),
   registerEnabled: true,
   loginOpen: false,
   loginMode: 'login',
@@ -34,10 +39,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!getToken()) return
     try {
       const u = await Auth.me()
-      set({ user: u })
+      set({ user: u, checkingSession: false })
     } catch {
       setToken(null)
-      set({ user: null, token: null })
+      set({ user: null, token: null, checkingSession: false })
     }
   },
 
