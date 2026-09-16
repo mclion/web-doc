@@ -4,7 +4,7 @@ import { FilePlus2, PanelLeftOpen, Sparkles, Wand2, X } from 'lucide-react'
 import { useDocsStore } from '@/store/docs'
 import { useAIChatStore } from '@/store/aiChat'
 import { useAuthStore } from '@/store/auth'
-import type { DocNode } from '@/lib/api'
+import { Nodes, type DocNode } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DocTree } from '@/components/DocTree'
@@ -17,7 +17,7 @@ import { LoginScreen } from '@/components/LoginScreen'
 import { UserMenu } from '@/components/UserMenu'
 
 export default function HomePage() {
-  const { nodes, loadAll, selectedId, sidebarOpen, toggleSidebar, selectDoc, createNode } = useDocsStore()
+  const { nodes, loadAll, selectedId, sidebarOpen, toggleSidebar, selectDoc, createNode, upsertFromServer } = useDocsStore()
   const { openPanel } = useAIChatStore()
   const { user, bootstrap, openLogin, checkingSession } = useAuthStore()
   const [createOpen, setCreateOpen] = useState(false)
@@ -87,6 +87,32 @@ export default function HomePage() {
     () => nodes.find((n) => n.id === selectedId && n.type === 'doc') ?? null,
     [nodes, selectedId],
   )
+
+  // A direct /v/:docId link (bookmarked, opened fresh, or reached outside the
+  // /s/:token share redirect — e.g. a fullscreen link) points at a doc that isn't
+  // in the local node list yet. Fetch it directly instead of just waiting on
+  // loadAll(): GetNode already allows the owner or any public doc, anonymous
+  // included, so this covers every case share-flow-only fetching didn't.
+  const [docFetchFailed, setDocFetchFailed] = useState(false)
+  useEffect(() => {
+    setDocFetchFailed(false)
+    if (!routeDocId) return
+    if (nodes.some((n) => n.id === routeDocId)) return
+    let cancelled = false
+    Nodes.get(routeDocId)
+      .then((r) => { if (!cancelled) upsertFromServer(r.node, { select: true }) })
+      .catch(() => {
+        if (cancelled) return
+        if (user) {
+          selectDoc(null)
+          navigate('/', { replace: true })
+        } else {
+          setDocFetchFailed(true)
+        }
+      })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeDocId, nodes, user])
 
   // URL points to a doc that doesn't exist: clear it (only validated for logged-in
   // users outside fullscreen mode, so anonymous share visitors aren't wrongly
@@ -169,7 +195,7 @@ export default function HomePage() {
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
-            Loading…
+            {docFetchFailed ? "This document isn't available." : 'Loading…'}
           </div>
         )}
         <ShareDialog doc={shareDoc} open={!!shareDoc} onOpenChange={(v) => !v && setShareDoc(null)} />
